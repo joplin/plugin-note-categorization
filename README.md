@@ -1,1 +1,2 @@
 # plugin-note-categorization
+hello
