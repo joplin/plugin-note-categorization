@@ -1,0 +1,16 @@
+{
+	"manifest_version": 1,
+	"id": "com.harsh16gupta.notecategorization",
+	"app_min_version": "3.5",
+	"version": "1.0.0",
+	"name": "Note Categorization Plugin",
+	"description": "",
+	"author": "Harsh Gupta",
+	"homepage_url": "",
+	"repository_url": "https://github.com/joplin/plugin-note-categorization",
+	"keywords": [],
+	"categories": [],
+	"screenshots": [],
+	"icons": {},
+	"promo_tile": {}
+}
