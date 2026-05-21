@@ -1,6 +1,3 @@
 {
-	"extraScripts": ["worker/embedWorker.ts"],
-	"webpackOverrides": {
-		"target": "web"
-	}
+	"extraScripts": ["worker/embedWorker.ts"]
 }

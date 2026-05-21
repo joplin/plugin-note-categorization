@@ -308,8 +308,14 @@ function buildExtraScriptConfigs(userConfig) {
 
 	for (const scriptName of userConfig.extraScripts) {
 		const scriptPaths = resolveExtraScriptPath(scriptName);
-		output.push({ ...extraScriptConfig, entry: scriptPaths.entry,
-			output: scriptPaths.output });
+		output.push({
+			...extraScriptConfig, entry: scriptPaths.entry,
+			output: {
+				filename: scriptPaths.output.filename,
+				path: scriptPaths.output.path,
+			},
+			target: 'web'
+		});
 	}
 
 	return output;

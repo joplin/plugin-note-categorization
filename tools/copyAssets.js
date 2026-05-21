@@ -24,8 +24,20 @@ if (!onnxDistDir) {
 
 const targetDir = path.join(__dirname, '..', 'dist', 'onnx-dist');
 
-console.log(`Copying ONNX WASM files from: ${onnxDistDir}`);
-console.log(`                         to: ${targetDir}`);
+// Clean stale files before copying
+fs.removeSync(targetDir);
+fs.ensureDirSync(targetDir);
 
-fs.copySync(onnxDistDir, targetDir);
-console.log('Done! WASM files copied to dist/onnx-dist/');
+// Copy only ONNX runtime files (.wasm + .mjs loaders) to reduce plugin archive size
+const runtimeFiles = fs.readdirSync(onnxDistDir).filter(f =>
+	f.startsWith('ort-wasm') && (f.endsWith('.wasm') || f.endsWith('.mjs'))
+);
+
+console.log(`Copying ${runtimeFiles.length} ONNX runtime files from: ${onnxDistDir}`);
+console.log(`                                       to: ${targetDir}`);
+
+for (const file of runtimeFiles) {
+	fs.copySync(path.join(onnxDistDir, file), path.join(targetDir, file));
+}
+
+console.log(`Done! ${runtimeFiles.length} ONNX runtime files copied to dist/onnx-dist/`);
