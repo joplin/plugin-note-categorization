@@ -20,6 +20,7 @@ export const runTestEmbed = async (installDir: string) => {
 
 	worker.onerror = (err) => {
 		logErr('Worker error:', err.message || err);
+		worker.terminate();
 	};
 
 	worker.onmessage = async (event) => {
