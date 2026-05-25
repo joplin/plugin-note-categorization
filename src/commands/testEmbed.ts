@@ -47,7 +47,12 @@ export const runTestEmbed = async (installDir: string) => {
 				log(`Embedding complete for "${testNote.title}"`);
 				log(`  Dimensions: ${data.dimensions}`);
 				log(`  Inference time: ${Math.round(data.inferenceTime)}ms`);
-				log(`  First 5 values: [${data.embedding.slice(0, 5).map((v: number) => v.toFixed(4)).join(', ')}]`);
+				log(
+					`  First 5 values: [${data.embedding
+						.slice(0, 5)
+						.map((v: number) => v.toFixed(4))
+						.join(', ')}]`,
+				);
 			} else {
 				logErr('Embed failed:', data.error);
 			}
