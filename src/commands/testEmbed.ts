@@ -1,5 +1,10 @@
 import { fetchAllNotes } from '../pipeline/noteReader';
 import { log, logErr } from '../utils/logger';
+import { getEncoding } from 'js-tiktoken';
+
+// Load the tokenizer and set our safe chunk limit
+const enc = getEncoding('cl100k_base');
+const MAX_TOKENS = 250;
 
 export const runTestEmbed = async (installDir: string) => {
 	log('Test embed command triggered');
@@ -12,15 +17,59 @@ export const runTestEmbed = async (installDir: string) => {
 		return;
 	}
 
-	const testNote = notes[0];
-	const textToEmbed = testNote.body.length > 0 ? testNote.body.slice(0, 2000) : testNote.title;
-	log(`Embedding note: "${testNote.title}" (${textToEmbed.length} chars)`);
-
 	const worker = new Worker(`${installDir}/worker/embedWorker.js`);
+	let currentNoteIndex = 0;
+	let currentChunkIndex = 0;
+	let currentNoteChunks: string[] = [];
+	let totalInferenceTime = 0;
+	const batchStartTime = performance.now();
 
 	worker.onerror = (err) => {
 		logErr('Worker error:', err.message || err);
 		worker.terminate();
+	};
+
+	const prepareNoteChunks = (text: string): string[] => {
+		const tokens = enc.encode(text);
+		const chunks: string[] = [];
+		if (tokens.length === 0) return [""];
+		
+		for (let i = 0; i < tokens.length; i += MAX_TOKENS) {
+			const chunkTokens = tokens.slice(i, i + MAX_TOKENS);
+			chunks.push(enc.decode(chunkTokens));
+		}
+		return chunks;
+	};
+
+	const sendNextChunk = () => {
+		if (currentNoteIndex >= notes.length) {
+			const totalTime = performance.now() - batchStartTime;
+			log(`-------------------------------------------`);
+			log(`Batch execution complete!`);
+			log(`Total notes processed: ${notes.length}`);
+			log(`Sum of inference times: ${Math.round(totalInferenceTime)}ms`);
+			log(`Real total batch time (including worker message passing): ${Math.round(totalTime)}ms`);
+			log(`-------------------------------------------`);
+			worker.terminate();
+			log('Worker terminated. Test complete.');
+			return;
+		}
+
+		const note = notes[currentNoteIndex];
+
+		if (currentChunkIndex === 0) {
+			// First time processing this note, let's chunk it!
+			const textToEmbed = note.body.length > 0 ? note.body : note.title;
+			currentNoteChunks = prepareNoteChunks(textToEmbed);
+		}
+
+		worker.postMessage({
+			type: 'embed',
+			text: currentNoteChunks[currentChunkIndex],
+			noteId: note.id,
+			chunkIndex: currentChunkIndex,
+			totalChunks: currentNoteChunks.length
+		});
 	};
 
 	worker.onmessage = async (event) => {
@@ -28,13 +77,10 @@ export const runTestEmbed = async (installDir: string) => {
 
 		if (data.type === 'load-result') {
 			if (data.success) {
-				log(`Model loaded in ${(data.loadTime / 1000).toFixed(1)}s, warmup: ${Math.round(data.warmupTime)}ms`);
-
-				worker.postMessage({
-					type: 'embed',
-					text: textToEmbed,
-					noteId: testNote.id,
-				});
+				log(`Model loaded in ${(data.loadTime / 1000).toFixed(1)}s, warmup: ${Math.round(data.warmupTime)}ms, device: ${data.device}, dtype: ${data.dtype}`);
+				log(`  Worker WebGPU diagnostics - gpu in navigator: ${data.workerGpuExists}, env.IS_WEBGPU_AVAILABLE: ${data.isWebGpuAvailable}`);
+				log(`Starting sequential embedding of ${notes.length} notes with chunking...`);
+				sendNextChunk();
 			} else {
 				logErr('Model load failed:', data.error);
 				worker.terminate();
@@ -44,15 +90,21 @@ export const runTestEmbed = async (installDir: string) => {
 
 		if (data.type === 'embed-result') {
 			if (data.success) {
-				log(`Embedding complete for "${testNote.title}"`);
-				log(`  Dimensions: ${data.dimensions}`);
-				log(`  Inference time: ${Math.round(data.inferenceTime)}ms`);
-				log(`  First 5 values: [${data.embedding.slice(0, 5).map((v: number) => v.toFixed(4)).join(', ')}]`);
+				totalInferenceTime += data.inferenceTime;
+				const note = notes[currentNoteIndex];
+				log(`[${currentNoteIndex + 1}/${notes.length}] embedded chunk ${currentChunkIndex + 1}/${currentNoteChunks.length} of "${note.title.slice(0, 30)}" in ${Math.round(data.inferenceTime)}ms`);
 			} else {
-				logErr('Embed failed:', data.error);
+				logErr(`Failed to embed note at index ${currentNoteIndex}:`, data.error);
 			}
-			worker.terminate();
-			log('Worker terminated. Test complete.');
+			
+			currentChunkIndex++;
+			if (currentChunkIndex >= currentNoteChunks.length) {
+				// We finished all chunks for this note
+				currentNoteIndex++;
+				currentChunkIndex = 0;
+			}
+			
+			sendNextChunk();
 		}
 	};
 

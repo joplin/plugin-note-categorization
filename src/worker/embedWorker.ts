@@ -2,7 +2,6 @@
 import { pipeline, env } from '@huggingface/transformers';
 
 const MODEL_ID = 'Xenova/all-MiniLM-L6-v2';
-const MODEL_DTYPE = 'fp32' as const;
 const POOLING = 'mean' as const;
 
 // Worker compiles to dist/worker/, WASM files are at dist/onnx-dist/
@@ -13,8 +12,28 @@ let embedder: any = null;
 const loadModel = async () => {
 	const t0 = performance.now();
 
+	let selectedDevice: any = 'wasm';
+	let selectedDtype: any = 'q8';
+	let workerGpuExists = false;
+	let adapterFound = false;
+
+	try {
+		if (typeof navigator !== 'undefined' && 'gpu' in navigator) {
+			workerGpuExists = true;
+			const adapter = await (navigator as any).gpu.requestAdapter();
+			if (adapter) {
+				adapterFound = true;
+				selectedDevice = 'webgpu';
+				selectedDtype = 'fp16';
+			}
+		}
+	} catch (e) {
+		// Ignore and fallback to wasm
+	}
+
 	embedder = await pipeline('feature-extraction', MODEL_ID, {
-		dtype: MODEL_DTYPE,
+		dtype: selectedDtype,
+		device: selectedDevice,
 	});
 
 	const loadTime = performance.now() - t0;
@@ -24,7 +43,14 @@ const loadModel = async () => {
 	await embedder('warmup text', { pooling: POOLING, normalize: true });
 	const warmupTime = performance.now() - tw;
 
-	return { loadTime, warmupTime };
+	return {
+		loadTime,
+		warmupTime,
+		device: selectedDevice,
+		dtype: selectedDtype,
+		workerGpuExists,
+		isWebGpuAvailable: adapterFound,
+	};
 };
 
 const embed = async (text: string) => {
