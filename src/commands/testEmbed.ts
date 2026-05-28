@@ -2,9 +2,14 @@ import { fetchAllNotes } from '../pipeline/noteReader';
 import { log, logErr } from '../utils/logger';
 import { getEncoding } from 'js-tiktoken';
 
-// Load the tokenizer and set our safe chunk limit
+// We use cl100k_base to approximate token counts for chunking.
+// The embedding model (all-MiniLM-L6-v2) uses a WordPiece tokenizer with a
+// 512-token limit. WordPiece has a smaller vocab (~30k vs ~100k) so it produces
+// ~1.3-1.5x more tokens than cl100k_base for the same text. A limit of 200
+// cl100k_base tokens expands to ~300 WordPiece tokens in the worst case,
+// well within the model's 512-token ceiling.
 const enc = getEncoding('cl100k_base');
-const MAX_TOKENS = 250;
+const MAX_TOKENS = 200;
 
 export const runTestEmbed = async (installDir: string) => {
 	log('Test embed command triggered');
@@ -77,7 +82,7 @@ export const runTestEmbed = async (installDir: string) => {
 
 		if (data.type === 'load-result') {
 			if (data.success) {
-				log(`Model loaded in ${(data.loadTime / 1000).toFixed(1)}s, warmup: ${Math.round(data.warmupTime)}ms, device: ${data.device}, dtype: ${data.dtype}`);
+				log(`Model loaded in ${(data.loadTime / 1000).toFixed(1)}s, device: ${data.device}, dtype: ${data.dtype}`);
 				log(`  Worker WebGPU diagnostics - gpu in navigator: ${data.workerGpuExists}, env.IS_WEBGPU_AVAILABLE: ${data.isWebGpuAvailable}`);
 				log(`Starting sequential embedding of ${notes.length} notes with chunking...`);
 				sendNextChunk();
