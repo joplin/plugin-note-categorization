@@ -37,8 +37,8 @@ export const runTestEmbed = async (installDir: string) => {
 	const prepareNoteChunks = (text: string): string[] => {
 		const tokens = enc.encode(text);
 		const chunks: string[] = [];
-		if (tokens.length === 0) return [""];
-		
+		if (tokens.length === 0) return [''];
+
 		for (let i = 0; i < tokens.length; i += MAX_TOKENS) {
 			const chunkTokens = tokens.slice(i, i + MAX_TOKENS);
 			chunks.push(enc.decode(chunkTokens));
@@ -73,7 +73,7 @@ export const runTestEmbed = async (installDir: string) => {
 			text: currentNoteChunks[currentChunkIndex],
 			noteId: note.id,
 			chunkIndex: currentChunkIndex,
-			totalChunks: currentNoteChunks.length
+			totalChunks: currentNoteChunks.length,
 		});
 	};
 
@@ -82,8 +82,12 @@ export const runTestEmbed = async (installDir: string) => {
 
 		if (data.type === 'load-result') {
 			if (data.success) {
-				log(`Model loaded in ${(data.loadTime / 1000).toFixed(1)}s, device: ${data.device}, dtype: ${data.dtype}`);
-				log(`  Worker WebGPU diagnostics - gpu in navigator: ${data.workerGpuExists}, env.IS_WEBGPU_AVAILABLE: ${data.isWebGpuAvailable}`);
+				log(
+					`Model loaded in ${(data.loadTime / 1000).toFixed(1)}s, device: ${data.device}, dtype: ${data.dtype}`,
+				);
+				log(
+					`  Worker WebGPU diagnostics - gpu in navigator: ${data.workerGpuExists}, env.IS_WEBGPU_AVAILABLE: ${data.isWebGpuAvailable}`,
+				);
 				log(`Starting sequential embedding of ${notes.length} notes with chunking...`);
 				sendNextChunk();
 			} else {
@@ -97,18 +101,20 @@ export const runTestEmbed = async (installDir: string) => {
 			if (data.success) {
 				totalInferenceTime += data.inferenceTime;
 				const note = notes[currentNoteIndex];
-				log(`[${currentNoteIndex + 1}/${notes.length}] embedded chunk ${currentChunkIndex + 1}/${currentNoteChunks.length} of "${note.title.slice(0, 30)}" in ${Math.round(data.inferenceTime)}ms`);
+				log(
+					`[${currentNoteIndex + 1}/${notes.length}] embedded chunk ${currentChunkIndex + 1}/${currentNoteChunks.length} of "${note.title.slice(0, 30)}" in ${Math.round(data.inferenceTime)}ms`,
+				);
 			} else {
 				logErr(`Failed to embed note at index ${currentNoteIndex}:`, data.error);
 			}
-			
+
 			currentChunkIndex++;
 			if (currentChunkIndex >= currentNoteChunks.length) {
 				// We finished all chunks for this note
 				currentNoteIndex++;
 				currentChunkIndex = 0;
 			}
-			
+
 			sendNextChunk();
 		}
 	};
