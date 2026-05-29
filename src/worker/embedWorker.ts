@@ -1,8 +1,13 @@
 // @ts-ignore
 import { pipeline, env } from '@huggingface/transformers';
 
+// TypeScript doesn't include WebGPU types by default.
+// Minimal interface to avoid casting navigator as `any`.
+interface NavigatorGPU {
+	gpu: { requestAdapter(): Promise<object | null> };
+}
+
 const MODEL_ID = 'Xenova/all-MiniLM-L6-v2';
-const MODEL_DTYPE = 'fp32' as const;
 const POOLING = 'mean' as const;
 
 // Worker compiles to dist/worker/, WASM files are at dist/onnx-dist/
@@ -13,18 +18,56 @@ let embedder: any = null;
 const loadModel = async () => {
 	const t0 = performance.now();
 
-	embedder = await pipeline('feature-extraction', MODEL_ID, {
-		dtype: MODEL_DTYPE,
-	});
+	let selectedDevice: any = 'wasm';
+	let selectedDtype: any = 'q8';
+	let workerGpuExists = false;
+	let adapterFound = false;
+
+	try {
+		if (typeof navigator !== 'undefined' && 'gpu' in navigator) {
+			workerGpuExists = true;
+			const adapter = await (navigator as unknown as NavigatorGPU).gpu.requestAdapter();
+			if (adapter) {
+				adapterFound = true;
+				selectedDevice = 'webgpu';
+				selectedDtype = 'fp16';
+			}
+		}
+	} catch (e) {
+		console.warn('WebGPU detection failed, falling back to WASM:', e);
+	}
+
+	// Try loading with the selected device/dtype, fallback to wasm/q8 if it fails
+	try {
+		embedder = await pipeline('feature-extraction', MODEL_ID, {
+			dtype: selectedDtype,
+			device: selectedDevice,
+		});
+		await embedder('warmup text', { pooling: POOLING, normalize: true });
+	} catch (e) {
+		if (selectedDevice === 'webgpu') {
+			// WebGPU pipeline or warmup failed, retry with WASM/q8
+			selectedDevice = 'wasm';
+			selectedDtype = 'q8';
+			embedder = await pipeline('feature-extraction', MODEL_ID, {
+				dtype: selectedDtype,
+				device: selectedDevice,
+			});
+			await embedder('warmup text', { pooling: POOLING, normalize: true });
+		} else {
+			throw e;
+		}
+	}
 
 	const loadTime = performance.now() - t0;
 
-	// Warm-up: first inference is always slower due to JIT/WASM setup.
-	const tw = performance.now();
-	await embedder('warmup text', { pooling: POOLING, normalize: true });
-	const warmupTime = performance.now() - tw;
-
-	return { loadTime, warmupTime };
+	return {
+		loadTime,
+		device: selectedDevice,
+		dtype: selectedDtype,
+		workerGpuExists,
+		isWebGpuAvailable: adapterFound,
+	};
 };
 
 const embed = async (text: string) => {
