@@ -10,9 +10,12 @@ const normalise = (vec: number[]): number[] => {
  */
 export const averageVectors = (vectors: number[][]): number[] => {
 	if (vectors.length === 0) throw new Error('Cannot average zero vectors');
-	if (vectors.length === 1) return vectors[0];
-
 	const dim = vectors[0].length;
+	for (const vec of vectors) {
+		if (vec.length !== dim) throw new Error('Cannot average vectors of different dimensions');
+	}
+	if (vectors.length === 1) return normalise(vectors[0]);
+
 	const avg = new Array<number>(dim).fill(0);
 	for (const vec of vectors) {
 		for (let i = 0; i < dim; i++) {
@@ -29,6 +32,7 @@ export const averageVectors = (vectors: number[][]): number[] => {
  * Cosine similarity between two L2-normalised vectors (= dot product).
  */
 export const cosineSimilarity = (a: number[], b: number[]): number => {
+	if (a.length !== b.length) throw new Error('Cannot compute cosine similarity for vectors of different dimensions');
 	let dot = 0;
 	for (let i = 0; i < a.length; i++) {
 		dot += a[i] * b[i];
@@ -42,7 +46,7 @@ export const cosineSimilarity = (a: number[], b: number[]): number => {
  * Perfect alignment (similarity = 1) → maxWeight.
  */
 export const computeTitleWeight = (similarity: number, maxWeight = 0.3): number => {
-	return Math.max(0, similarity) * maxWeight;
+	return Math.min(1, Math.max(0, similarity)) * maxWeight;
 };
 
 /**
@@ -50,6 +54,7 @@ export const computeTitleWeight = (similarity: number, maxWeight = 0.3): number 
  * final = normalise((1 - alpha) * body + alpha * title)
  */
 export const blendVectors = (body: number[], title: number[], alpha: number): number[] => {
+	if (body.length !== title.length) throw new Error('Cannot blend vectors of different dimensions');
 	const dim = body.length;
 	const blended = new Array<number>(dim);
 	for (let i = 0; i < dim; i++) {

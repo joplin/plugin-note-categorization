@@ -168,6 +168,12 @@ export const runTestEmbed = async (installDir: string) => {
 		if (data.type === 'embed-result') {
 			const note = notes[currentNoteIndex];
 
+			if (data.noteId !== note.id) {
+				logErr(`Error: Received out-of-order worker result. Expected noteId: ${note.id}, got: ${data.noteId}`);
+				worker.terminate();
+				return;
+			}
+
 			if (!data.success) {
 				logErr(`Failed to embed note "${note.title.slice(0, 30)}":`, data.error);
 				currentNoteIndex++;
