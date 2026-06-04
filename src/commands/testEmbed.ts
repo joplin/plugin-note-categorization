@@ -4,6 +4,7 @@ import { NoteVector, WorkerMessage } from '../types/embed';
 import { isGenericTitle } from '../utils/titleFilter';
 import { log, logErr } from '../utils/logger';
 import { getEncoding } from 'js-tiktoken';
+import { VectorCache } from '../pipeline/vectorCache';
 
 // We use cl100k_base to approximate token counts for chunking.
 // The embedding model (all-MiniLM-L6-v2) uses a WordPiece tokenizer with a
@@ -25,6 +26,20 @@ export const runTestEmbed = async (installDir: string) => {
 		return;
 	}
 
+	const cache = await VectorCache.create();
+
+	// Handle deletions: Remove notes from index that are no longer in Joplin
+	const indexedIds = await cache.getIndexedIds();
+	const joplinNoteIds = new Set(notes.map((n) => n.id));
+	const idsToDelete = indexedIds.filter((id) => !joplinNoteIds.has(id));
+
+	if (idsToDelete.length > 0) {
+		log(`Removing ${idsToDelete.length} obsolete notes from cache`);
+		await cache.deleteItems(idsToDelete);
+	}
+
+	await cache.beginUpdate();
+
 	const worker = new Worker(`${installDir}/worker/embedWorker.js`);
 	let currentNoteIndex = 0;
 	let currentChunkIndex = 0;
@@ -34,11 +49,13 @@ export const runTestEmbed = async (installDir: string) => {
 	let isEmbeddingTitle = false;
 	let totalInferenceTime = 0;
 	let skippedCount = 0;
+	let cachedCount = 0;
 	const batchStartTime = performance.now();
 	const noteVectors: NoteVector[] = [];
 
 	worker.onerror = (err: ErrorEvent) => {
 		logErr('Worker error:', err.message);
+		cache.cancelUpdate();
 		worker.terminate();
 	};
 
@@ -54,25 +71,36 @@ export const runTestEmbed = async (installDir: string) => {
 		return chunks;
 	};
 
-	const finalizeNote = (vector: number[], titleWeight: number) => {
+	const finalizeNote = async (vector: number[], titleWeight: number, hash: string) => {
 		const note = notes[currentNoteIndex];
 		noteVectors.push({ noteId: note.id, title: note.title, vector, titleWeight });
 		const norm = Math.sqrt(vector.reduce((s, v) => s + v * v, 0));
 		log(`  → final vector: dim=${vector.length}, titleWeight=${titleWeight.toFixed(3)}, norm=${norm.toFixed(4)}`);
+
+		await cache.upsertItem(note.id, vector, {
+			title: note.title,
+			hash,
+			updatedTime: note.updated_time,
+			titleWeight,
+		});
+
 		currentNoteIndex++;
-		processNextNote();
+		await processNextNote();
 	};
 
-	const processNextNote = () => {
+	let currentNoteHash = '';
+
+	const processNextNote = async () => {
 		currentChunkIndex = 0;
 		currentNoteChunks = [];
 		currentChunkEmbeddings = [];
 		currentBodyVector = [];
 		isEmbeddingTitle = false;
 
-		// Skip notes with empty body and generic title — no semantic content to embed
+		// Skip notes with empty body and generic title, and bypass cached notes
 		while (currentNoteIndex < notes.length) {
 			const note = notes[currentNoteIndex];
+
 			if (note.body.length === 0 && isGenericTitle(note.title)) {
 				log(
 					`[${currentNoteIndex + 1}/${notes.length}] skipped "${note.title.slice(0, 30)}" (empty body, generic title)`,
@@ -81,6 +109,23 @@ export const runTestEmbed = async (installDir: string) => {
 				currentNoteIndex++;
 				continue;
 			}
+
+			currentNoteHash = cache.computeHash(note.title, note.body);
+			const cachedItem = await cache.getItem(note.id);
+
+			if (cachedItem && cachedItem.metadata.hash === currentNoteHash) {
+				log(`[${currentNoteIndex + 1}/${notes.length}] cache hit for "${note.title.slice(0, 30)}"`);
+				noteVectors.push({
+					noteId: note.id,
+					title: note.title,
+					vector: cachedItem.vector,
+					titleWeight: cachedItem.metadata.titleWeight ?? 0,
+				});
+				cachedCount++;
+				currentNoteIndex++;
+				continue;
+			}
+
 			break;
 		}
 
@@ -89,11 +134,15 @@ export const runTestEmbed = async (installDir: string) => {
 			log(`-------------------------------------------`);
 			log(`Batch execution complete!`);
 			log(`Total notes processed: ${notes.length}`);
-			log(`Notes embedded: ${noteVectors.length}`);
+			log(`Notes embedded: ${noteVectors.length - cachedCount}`);
+			log(`Notes loaded from cache: ${cachedCount}`);
 			log(`Notes skipped: ${skippedCount}`);
 			log(`Sum of inference times: ${Math.round(totalInferenceTime)}ms`);
 			log(`Real total batch time (including worker message passing): ${Math.round(totalTime)}ms`);
 			log(`-------------------------------------------`);
+
+			await cache.endUpdate();
+
 			worker.terminate();
 			log('Worker terminated. Test complete.');
 			return;
@@ -116,7 +165,7 @@ export const runTestEmbed = async (installDir: string) => {
 		}
 	};
 
-	worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
+	worker.onmessage = async (event: MessageEvent<WorkerMessage>) => {
 		const data = event.data;
 
 		if (data.type === 'load-result') {
@@ -128,9 +177,10 @@ export const runTestEmbed = async (installDir: string) => {
 					`  Worker WebGPU diagnostics - gpu in navigator: ${data.workerGpuExists}, env.IS_WEBGPU_AVAILABLE: ${data.isWebGpuAvailable}`,
 				);
 				log(`Starting sequential embedding of ${notes.length} notes with chunking...`);
-				processNextNote();
+				await processNextNote();
 			} else {
 				logErr('Model load failed:', data.error);
+				cache.cancelUpdate();
 				worker.terminate();
 			}
 			return;
@@ -139,16 +189,10 @@ export const runTestEmbed = async (installDir: string) => {
 		if (data.type === 'embed-result') {
 			const note = notes[currentNoteIndex];
 
-			if (data.noteId !== note.id) {
-				logErr(`Error: Received out-of-order worker result. Expected noteId: ${note.id}, got: ${data.noteId}`);
-				worker.terminate();
-				return;
-			}
-
 			if (!data.success) {
 				logErr(`Failed to embed note "${note.title.slice(0, 30)}":`, data.error);
 				currentNoteIndex++;
-				processNextNote();
+				await processNextNote();
 				return;
 			}
 
@@ -165,13 +209,13 @@ export const runTestEmbed = async (installDir: string) => {
 					log(
 						`  → title embedded in ${Math.round(data.inferenceTime)}ms, sim=${sim.toFixed(3)}, weight=${alpha.toFixed(3)}`,
 					);
-					finalizeNote(finalVector, alpha);
+					await finalizeNote(finalVector, alpha, currentNoteHash);
 				} else {
 					// Empty body, descriptive title → title is the entire vector
 					log(
 						`[${currentNoteIndex + 1}/${notes.length}] embedded title of "${note.title.slice(0, 30)}" in ${Math.round(data.inferenceTime)}ms (no body)`,
 					);
-					finalizeNote(titleEmbedding, 1.0);
+					await finalizeNote(titleEmbedding, 1.0, currentNoteHash);
 				}
 			} else {
 				// Body chunk result
@@ -198,7 +242,7 @@ export const runTestEmbed = async (installDir: string) => {
 						worker.postMessage({ type: 'embed', text: note.title, noteId: note.id });
 					} else {
 						// Generic title → body vector is the final vector
-						finalizeNote(currentBodyVector, 0);
+						await finalizeNote(currentBodyVector, 0, currentNoteHash);
 					}
 				}
 			}

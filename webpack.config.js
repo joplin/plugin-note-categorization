@@ -185,6 +185,18 @@ const baseConfig = {
 			},
 		],
 	},
+	// vectra's barrel export (lib/index.js) re-exports LocalEmbeddings and
+	// TransformersEmbeddings, which contain require('@huggingface/transformers').
+	// Webpack follows these statically even though we never call those classes.
+	// @huggingface/transformers in turn pulls in onnxruntime-node with native
+	// .node binaries that Webpack cannot parse. Marking both as externals
+	// prevents Webpack from traversing into them. The deep import path
+	// (vectra/lib/LocalIndex) is blocked by vectra's package.json exports field,
+	// so this is the only viable workaround.
+	externals: {
+		'onnxruntime-node': 'commonjs onnxruntime-node',
+		'@huggingface/transformers': 'commonjs @huggingface/transformers',
+	},
 	...userConfig.webpackOverrides,
 };
 
@@ -264,9 +276,14 @@ const extraScriptConfig = {
 
 const createArchiveConfig = {
 	stats: 'errors-only',
+	target: 'node',
 	entry: './dist/index.js',
 	resolve: {
 		fallback: moduleFallback,
+	},
+	externals: {
+		'onnxruntime-node': 'commonjs onnxruntime-node',
+		'@huggingface/transformers': 'commonjs @huggingface/transformers',
 	},
 	output: {
 		filename: 'index.js',
