@@ -1,5 +1,6 @@
 import { fetchAllNotes } from '../pipeline/noteReader';
 import { averageVectors, blendVectors, computeTitleWeight, cosineSimilarity } from '../pipeline/vectorAggregator';
+import { NoteVector, WorkerMessage } from '../types/embed';
 import { isGenericTitle } from '../utils/titleFilter';
 import { log, logErr } from '../utils/logger';
 import { getEncoding } from 'js-tiktoken';
@@ -12,36 +13,6 @@ import { getEncoding } from 'js-tiktoken';
 // well within the model's 512-token ceiling.
 const enc = getEncoding('cl100k_base');
 const MAX_TOKENS = 200;
-
-interface LoadResultMessage {
-	type: 'load-result';
-	success: boolean;
-	loadTime: number;
-	device: string;
-	dtype: string;
-	workerGpuExists: boolean;
-	isWebGpuAvailable: boolean;
-	error?: string;
-}
-
-interface EmbedResultMessage {
-	type: 'embed-result';
-	noteId: string;
-	success: boolean;
-	inferenceTime: number;
-	dimensions: number;
-	embedding: number[];
-	error?: string;
-}
-
-type WorkerMessage = LoadResultMessage | EmbedResultMessage;
-
-export interface NoteVector {
-	noteId: string;
-	title: string;
-	vector: number[];
-	titleWeight: number;
-}
 
 export const runTestEmbed = async (installDir: string) => {
 	log('Test embed command triggered');
