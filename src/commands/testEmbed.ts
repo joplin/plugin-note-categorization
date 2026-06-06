@@ -1,4 +1,6 @@
 import { fetchAllNotes } from '../pipeline/noteReader';
+import { benchmark } from '../pipeline/clustering/benchmark';
+import { CategorizationConfig } from '../types/cluster';
 import { averageVectors, blendVectors, computeTitleWeight, cosineSimilarity } from '../pipeline/vectorAggregator';
 import { NoteVector, WorkerMessage } from '../types/embed';
 import { isGenericTitle } from '../utils/titleFilter';
@@ -144,7 +146,52 @@ export const runTestEmbed = async (installDir: string) => {
 			await cache.endUpdate();
 
 			worker.terminate();
-			log('Worker terminated. Test complete.');
+			log('Worker terminated. Embedding complete.');
+
+			// ── Clustering Benchmark ─────────────────────────────
+			// Edit this config to compare different algorithms and dimensions.
+			// Results are printed as a comparison table in the console.
+			const clusterConfig: CategorizationConfig = {
+				seed: 42,
+				metric: 'cosine',
+				intermediateDim: 10,
+				intermediateNeighbors: 15,
+				strategies: [
+					{ name: 'kmeans-5', algorithm: 'kmeans', K: 5 },
+					{ name: 'kmeans-8', algorithm: 'kmeans', K: 8 },
+					{ name: 'xmeans-auto', algorithm: 'xmeans', K_min: 3, K_max: 15 },
+					{ name: 'kmedoids-5', algorithm: 'kmedoids', K: 5 },
+					{ name: 'hdbscan-3', algorithm: 'hdbscan', minClusterSize: 3 },
+					{ name: 'hdbscan-5', algorithm: 'hdbscan', minClusterSize: 5 },
+				],
+			};
+
+			if (noteVectors.length >= 3) {
+				const vectors = noteVectors.map((nv) => nv.vector);
+				const results = benchmark(vectors, clusterConfig);
+
+				// Log note titles per cluster for the best strategy
+				if (results.length > 0) {
+					const best = results[0];
+					log(`\nCluster assignments (${best.strategyName}):`);
+					const clusterNotes = new Map<number, string[]>();
+					for (let i = 0; i < noteVectors.length; i++) {
+						const c = best.assignments[i];
+						if (!clusterNotes.has(c)) clusterNotes.set(c, []);
+						clusterNotes.get(c)!.push(noteVectors[i].title);
+					}
+					for (const [clusterId, titles] of clusterNotes) {
+						const label = clusterId < 0 ? 'Noise/Outliers' : `Cluster ${clusterId}`;
+						log(`  ${label} (${titles.length} notes):`);
+						for (const title of titles) {
+							log(`    - ${title}`);
+						}
+					}
+				}
+			} else {
+				log('Too few notes for clustering (need at least 3).');
+			}
+
 			return;
 		}
 
