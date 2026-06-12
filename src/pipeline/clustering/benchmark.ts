@@ -1,15 +1,12 @@
 import { CategorizationConfig, BenchmarkResult, ClusteringStrategy } from '../../types/cluster';
 import { DistanceFn, getDistanceFn, silhouetteScore } from './metrics';
 import { kmeans } from './kmeans';
-import { xmeans } from './xmeans';
 import { kmedoids } from './kmedoids';
 import { hdbscan } from './hdbscan';
 import { UmapProjector } from '../UmapProjector';
 import { log } from '../../utils/logger';
 
 const DEFAULT_K = 5;
-const DEFAULT_K_MIN = 2;
-const DEFAULT_K_MAX = 10;
 const DEFAULT_MIN_CLUSTER_SIZE = 3;
 
 /**
@@ -19,8 +16,6 @@ function runStrategy(vectors: number[][], strategy: ClusteringStrategy, distFn: 
 	switch (strategy.algorithm) {
 		case 'kmeans':
 			return kmeans(vectors, strategy.K ?? DEFAULT_K, distFn, seed);
-		case 'xmeans':
-			return xmeans(vectors, strategy.K_min ?? DEFAULT_K_MIN, strategy.K_max ?? DEFAULT_K_MAX, distFn, seed);
 		case 'kmedoids':
 			return kmedoids(vectors, strategy.K ?? DEFAULT_K, distFn, seed);
 		case 'hdbscan':

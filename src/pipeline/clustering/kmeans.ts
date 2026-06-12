@@ -165,13 +165,3 @@ export function kmeans(
 
 	return assignments;
 }
-
-/**
- * Returns the centroids for a given clustering.
- * Exported for use by X-Means which needs to inspect centroids.
- */
-export function computeCentroids(vectors: number[][], assignments: number[], K: number): number[][] {
-	const dim = vectors[0].length;
-	const rng = mulberry32(0);
-	return recomputeCentroids(vectors, assignments, K, dim, rng);
-}

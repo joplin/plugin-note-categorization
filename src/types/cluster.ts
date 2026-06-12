@@ -1,15 +1,11 @@
-export type ClusteringAlgorithm = 'kmeans' | 'xmeans' | 'kmedoids' | 'hdbscan';
+export type ClusteringAlgorithm = 'kmeans' | 'kmedoids' | 'hdbscan';
 
 export interface ClusteringStrategy {
-	/** Human-readable label for this run, e.g. 'kmeans-5', 'xmeans-auto' */
+	/** Human-readable label for this run, e.g. 'kmeans-5' */
 	name: string;
 	algorithm: ClusteringAlgorithm;
 	/** Number of clusters (kmeans / kmedoids) */
 	K?: number;
-	/** Minimum clusters to try (xmeans) */
-	K_min?: number;
-	/** Maximum clusters to try (xmeans) */
-	K_max?: number;
 	/** Minimum points to form a cluster (hdbscan, default: 3) */
 	minClusterSize?: number;
 	/** How many neighbors define a "core" point (hdbscan, default: minClusterSize). Lower = fewer outliers */

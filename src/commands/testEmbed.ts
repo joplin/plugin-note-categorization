@@ -159,7 +159,6 @@ export const runTestEmbed = async (installDir: string) => {
 				strategies: [
 					{ name: 'kmeans-5', algorithm: 'kmeans', K: 5 },
 					{ name: 'kmeans-8', algorithm: 'kmeans', K: 8 },
-					{ name: 'xmeans-auto', algorithm: 'xmeans', K_min: 3, K_max: 15 },
 					{ name: 'kmedoids-5', algorithm: 'kmedoids', K: 5 },
 					{ name: 'hdbscan-3', algorithm: 'hdbscan', minClusterSize: 3 },
 					{ name: 'hdbscan-3-ms2', algorithm: 'hdbscan', minClusterSize: 3, minSamples: 2 },
