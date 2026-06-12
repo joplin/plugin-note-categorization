@@ -24,7 +24,7 @@ function runStrategy(vectors: number[][], strategy: ClusteringStrategy, distFn: 
 		case 'kmedoids':
 			return kmedoids(vectors, strategy.K ?? DEFAULT_K, distFn, seed);
 		case 'hdbscan':
-			return hdbscan(vectors, strategy.minClusterSize ?? DEFAULT_MIN_CLUSTER_SIZE, distFn);
+			return hdbscan(vectors, strategy.minClusterSize ?? DEFAULT_MIN_CLUSTER_SIZE, strategy.minSamples, distFn);
 		default:
 			throw new Error(`Unknown clustering algorithm: ${strategy.algorithm}`);
 	}

@@ -12,6 +12,8 @@ export interface ClusteringStrategy {
 	K_max?: number;
 	/** Minimum points to form a cluster (hdbscan, default: 3) */
 	minClusterSize?: number;
+	/** How many neighbors define a "core" point (hdbscan, default: minClusterSize). Lower = fewer outliers */
+	minSamples?: number;
 }
 
 export interface CategorizationConfig {

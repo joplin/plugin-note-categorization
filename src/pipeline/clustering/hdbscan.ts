@@ -18,12 +18,14 @@ const DEFAULT_MIN_CLUSTER_SIZE = 3;
  *
  * @param vectors         Input data points (N x D)
  * @param minClusterSize  Minimum points to form a cluster (default: 3)
+ * @param minSamples      How many neighbors define a "core" point (default: minClusterSize). Lower = fewer outliers
  * @param distFn          Distance function (used to determine if normalization is needed)
  * @returns               Cluster assignments (length N). -1 = noise/outlier, 0..K = cluster IDs
  */
 export function hdbscan(
 	vectors: number[][],
 	minClusterSize: number = DEFAULT_MIN_CLUSTER_SIZE,
+	minSamples: number | undefined,
 	distFn: DistanceFn,
 ): number[] {
 	const n = vectors.length;
@@ -39,7 +41,7 @@ export function hdbscan(
 
 	const clusterer = new HDBSCAN({
 		minClusterSize,
-		minSamples: minClusterSize,
+		minSamples: minSamples ?? minClusterSize,
 	});
 
 	return clusterer.fit(inputVectors);

@@ -162,7 +162,8 @@ export const runTestEmbed = async (installDir: string) => {
 					{ name: 'xmeans-auto', algorithm: 'xmeans', K_min: 3, K_max: 15 },
 					{ name: 'kmedoids-5', algorithm: 'kmedoids', K: 5 },
 					{ name: 'hdbscan-3', algorithm: 'hdbscan', minClusterSize: 3 },
-					{ name: 'hdbscan-5', algorithm: 'hdbscan', minClusterSize: 5 },
+					{ name: 'hdbscan-3-ms2', algorithm: 'hdbscan', minClusterSize: 3, minSamples: 2 },
+					{ name: 'hdbscan-5-ms2', algorithm: 'hdbscan', minClusterSize: 5, minSamples: 2 },
 				],
 			};
 
@@ -170,13 +171,12 @@ export const runTestEmbed = async (installDir: string) => {
 				const vectors = noteVectors.map((nv) => nv.vector);
 				const results = benchmark(vectors, clusterConfig);
 
-				// Log note titles per cluster for the best strategy
-				if (results.length > 0) {
-					const best = results[0];
-					log(`\nCluster assignments (${best.strategyName}):`);
+				// Log note titles per cluster for all strategies, in order (best to worst)
+				for (const res of results) {
+					log(`\nCluster assignments (${res.strategyName}):`);
 					const clusterNotes = new Map<number, string[]>();
 					for (let i = 0; i < noteVectors.length; i++) {
-						const c = best.assignments[i];
+						const c = res.assignments[i];
 						if (!clusterNotes.has(c)) clusterNotes.set(c, []);
 						clusterNotes.get(c)!.push(noteVectors[i].title);
 					}
