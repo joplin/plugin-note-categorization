@@ -40,6 +40,5 @@ export interface BenchmarkResult {
 	silhouetteScore: number;
 	/** Number of points classified as noise/outliers (HDBSCAN only) */
 	outlierCount: number;
-	/** Time taken to run this strategy in milliseconds */
 	timeMs: number;
 }

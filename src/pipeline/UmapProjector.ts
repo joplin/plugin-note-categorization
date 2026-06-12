@@ -1,56 +1,8 @@
 import { UMAP } from 'umap-js';
 import { log } from '../utils/logger';
-
-export interface UmapProjectorOptions {
-	/** Number of dimensions in the output (default: 2) */
-	nComponents?: number;
-	/** Number of nearest neighbors for manifold approximation (default: 15) */
-	nNeighbors?: number;
-	/** Minimum distance between points in output space (default: 0.1) */
-	minDist?: number;
-	/** Distance metric: 'cosine' or 'euclidean' (default: 'cosine') */
-	metric?: 'cosine' | 'euclidean';
-	/** Seed for reproducible results (default: 42) */
-	seed?: number;
-}
-
-/**
- * Mulberry32: a fast, seedable 32-bit PRNG.
- * Returns a function that produces deterministic values in [0, 1).
- * Used instead of Math.random() so UMAP projections are reproducible.
- */
-function mulberry32(seed: number): () => number {
-	return () => {
-		seed |= 0;
-		seed = (seed + 0x6d2b79f5) | 0;
-		let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-	};
-}
-
-function cosineDistance(a: number[], b: number[]): number {
-	let dot = 0;
-	let normA = 0;
-	let normB = 0;
-	for (let i = 0; i < a.length; i++) {
-		dot += a[i] * b[i];
-		normA += a[i] * a[i];
-		normB += b[i] * b[i];
-	}
-	const denom = Math.sqrt(normA) * Math.sqrt(normB);
-	if (denom === 0) return 1;
-	return 1 - dot / denom;
-}
-
-function euclideanDistance(a: number[], b: number[]): number {
-	let sum = 0;
-	for (let i = 0; i < a.length; i++) {
-		const d = a[i] - b[i];
-		sum += d * d;
-	}
-	return Math.sqrt(sum);
-}
+import { mulberry32 } from '../utils/prng';
+import { cosineDistance, euclideanDistance } from './clustering/metrics';
+import { UmapProjectorOptions } from '../types/projector';
 
 export class UmapProjector {
 	private readonly nComponents: number;
