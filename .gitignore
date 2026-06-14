@@ -1,3 +1,7 @@
 dist/
 node_modules/
 publish/
+
+# Local visualization files
+clustering_results.json
+tools/plots/

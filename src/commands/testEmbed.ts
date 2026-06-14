@@ -1,6 +1,11 @@
 import { fetchAllNotes } from '../pipeline/noteReader';
 import { benchmark } from '../pipeline/clustering/benchmark';
 import { CategorizationConfig } from '../types/cluster';
+import { UmapProjector } from '../pipeline/UmapProjector';
+import * as fs from 'fs';
+import * as path from 'path';
+import joplin from 'api';
+
 import { averageVectors, blendVectors, computeTitleWeight, cosineSimilarity } from '../pipeline/vectorAggregator';
 import { NoteVector, WorkerMessage } from '../types/embed';
 import { isGenericTitle } from '../utils/titleFilter';
@@ -168,6 +173,54 @@ export const runTestEmbed = async (installDir: string) => {
 			if (noteVectors.length >= 3) {
 				const vectors = noteVectors.map((nv) => nv.vector);
 				const results = benchmark(vectors, clusterConfig);
+
+				// Export 2D coordinates and cluster assignments for local Python visualization
+				try {
+					const projector2D = new UmapProjector({
+						nComponents: 2,
+						nNeighbors: clusterConfig.intermediateNeighbors,
+						metric: clusterConfig.metric,
+						seed: clusterConfig.seed,
+					});
+					const coords2D = projector2D.project(vectors);
+
+					const exportData = {
+						notes: noteVectors.map((nv, i) => ({
+							id: nv.noteId,
+							title: nv.title,
+							coords: coords2D[i],
+						})),
+						strategies: results.map((res) => ({
+							name: res.strategyName,
+							assignments: res.assignments,
+							silhouetteScore: res.silhouetteScore,
+						})),
+					};
+
+					const jsonStr = JSON.stringify(exportData, null, '\t');
+					let exported = false;
+
+					// Attempt to write directly to the local dev workspace if it exists
+					const devDir = '/home/harsh-gupta/Projects/plugin-note-categorization';
+					if (fs.existsSync(devDir)) {
+						const devExportPath = path.join(devDir, 'clustering_results.json');
+						fs.writeFileSync(devExportPath, jsonStr, 'utf8');
+						log(`Exported clustering results to dev workspace: ${devExportPath}`);
+						exported = true;
+					}
+
+					// Fallback to plugin data directory
+					const dataDir = await joplin.plugins.dataDir();
+					if (dataDir) {
+						const dataExportPath = path.join(dataDir, 'clustering_results.json');
+						fs.writeFileSync(dataExportPath, jsonStr, 'utf8');
+						if (!exported) {
+							log(`Exported clustering results to plugin data folder: ${dataExportPath}`);
+						}
+					}
+				} catch (exportErr) {
+					logErr('Failed to export clustering results for visualization:', exportErr);
+				}
 
 				// Log note titles per cluster for all strategies, in order (best to worst)
 				for (const res of results) {
