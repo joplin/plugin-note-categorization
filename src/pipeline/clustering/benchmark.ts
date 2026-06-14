@@ -50,7 +50,7 @@ function logBenchmarkTable(results: BenchmarkResult[]): void {
 	log('=== Clustering Benchmark Results ===');
 	log('');
 
-	const header = `${'Strategy'.padEnd(20)} | ${'Algo'.padEnd(10)} | ${'K'.padStart(3)} | ${'Silhouette'.padStart(10)} | ${'Outliers'.padStart(8)} | ${'Time'.padStart(8)} | Cluster Sizes`;
+	const header = `${'Strategy'.padEnd(20)} | ${'Algo'.padEnd(10)} | ${'Cls'.padStart(3)} | ${'Silhouette'.padStart(10)} | ${'Outliers'.padStart(8)} | ${'Time'.padStart(8)} | Cluster Sizes`;
 	log(header);
 	log('-'.repeat(header.length + 20));
 

@@ -106,6 +106,10 @@ function recomputeCentroids(
 /**
  * K-Means clustering using Lloyd's algorithm with k-means++ initialization.
  *
+ * Note: centroid recomputation uses the arithmetic mean, which minimizes the
+ * squared Euclidean objective. With a non-Euclidean distFn (e.g. cosine) this
+ * becomes a heuristic — results are still useful but not mathematically optimal.
+ *
  * @param vectors   Input data points (N x D)
  * @param K         Number of clusters
  * @param distFn    Distance function

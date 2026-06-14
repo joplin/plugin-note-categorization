@@ -8,11 +8,12 @@ const MAX_ITERATIONS = 100;
  * Used for greedy medoid initialization (BUILD phase of PAM).
  */
 function findFarthestPoint(vectors: number[][], medoidIndices: number[], distFn: DistanceFn): number {
+	const medoidSet = new Set(medoidIndices);
 	let bestIdx = 0;
 	let bestMinDist = -1;
 
 	for (let i = 0; i < vectors.length; i++) {
-		if (medoidIndices.includes(i)) continue;
+		if (medoidSet.has(i)) continue;
 
 		let minDist = Infinity;
 		for (const m of medoidIndices) {
