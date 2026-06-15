@@ -37,7 +37,9 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
+    "hdbscan-ts": "^1.0.17",
     "js-tiktoken": "^1.0.21",
+    "umap-js": "^1.4.0",
     "vectra": "^0.12.3"
   }
 }
