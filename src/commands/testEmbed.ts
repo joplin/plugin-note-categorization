@@ -174,21 +174,21 @@ export const runTestEmbed = async (installDir: string) => {
 				const vectors = noteVectors.map((nv) => nv.vector);
 				const results = benchmark(vectors, clusterConfig);
 
-				// Export 2D coordinates and cluster assignments for local Python visualization
+				// Export 3D coordinates and cluster assignments for local Python visualization
 				try {
-					const projector2D = new UmapProjector({
-						nComponents: 2,
+					const projector3D = new UmapProjector({
+						nComponents: 3,
 						nNeighbors: clusterConfig.intermediateNeighbors,
 						metric: clusterConfig.metric,
 						seed: clusterConfig.seed,
 					});
-					const coords2D = projector2D.project(vectors);
+					const coords3D = projector3D.project(vectors);
 
 					const exportData = {
 						notes: noteVectors.map((nv, i) => ({
 							id: nv.noteId,
 							title: nv.title,
-							coords: coords2D[i],
+							coords: coords3D[i],
 						})),
 						strategies: results.map((res) => ({
 							name: res.strategyName,
