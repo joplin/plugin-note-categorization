@@ -7,9 +7,9 @@
     "copyAssets": "node tools/copyAssets.js",
     "updateVersion": "webpack --env joplin-plugin-config=updateVersion",
     "update": "npm install -g generator-joplin && yo joplin --node-package-manager npm --update --force",
-    "lint": "eslint \"src/**/*.ts\"",
-    "format": "prettier --write \"src/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\"",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
     "ci": "npm run lint && npm run format:check && npm run dist"
   },
   "license": "MIT",
@@ -21,6 +21,8 @@
   ],
   "devDependencies": {
     "@types/node": "^18.7.13",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "chalk": "^4.1.0",
@@ -39,6 +41,8 @@
     "@huggingface/transformers": "^3.8.1",
     "hdbscan-ts": "^1.0.17",
     "js-tiktoken": "^1.0.21",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "umap-js": "^1.4.0",
     "vectra": "^0.12.3"
   }
