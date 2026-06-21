@@ -1,3 +1,3 @@
 {
-	"extraScripts": ["worker/embedWorker.ts"]
+	"extraScripts": ["worker/embedWorker.ts", "webview/panel.tsx"]
 }

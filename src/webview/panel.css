@@ -1,0 +1,418 @@
+:root {
+	--accent: #4a90d9;
+}
+
+* {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+html,
+body,
+#root {
+	height: 100vh;
+}
+
+body {
+	font-family: var(--joplin-font-family);
+	font-size: var(--joplin-font-size);
+	color: var(--joplin-color);
+	background-color: var(--joplin-background-color);
+	line-height: 1.5;
+	overflow: hidden;
+}
+
+.panel-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px 14px;
+	border-bottom: 1px solid var(--joplin-divider-color);
+	background: var(--joplin-background-color);
+	position: sticky;
+	top: 0;
+	z-index: 10;
+}
+
+.panel-header-title {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 600;
+	font-size: 1.05em;
+}
+
+.btn-run {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 6px 14px;
+	border: none;
+	border-radius: 6px;
+	background: var(--accent);
+	color: #fff;
+	font-size: 0.85em;
+	font-weight: 600;
+	font-family: inherit;
+	cursor: pointer;
+	transition: opacity 0.2s, transform 0.15s;
+}
+
+.btn-run:hover {
+	opacity: 0.88;
+	transform: translateY(-1px);
+}
+
+.btn-run:active {
+	transform: translateY(0);
+}
+
+.btn-run:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+	transform: none;
+}
+
+.status-bar {
+	padding: 10px 14px;
+	border-bottom: 1px solid var(--joplin-divider-color);
+	display: none;
+}
+
+.status-bar.visible {
+	display: block;
+}
+
+.status-text {
+	font-size: 0.85em;
+	opacity: 0.75;
+	margin-bottom: 6px;
+}
+
+.progress-container {
+	width: 100%;
+	height: 6px;
+	background: var(--joplin-divider-color);
+	border-radius: 3px;
+	overflow: hidden;
+	margin-bottom: 6px;
+}
+
+.progress-fill {
+	height: 100%;
+	background: var(--accent);
+	border-radius: 3px;
+	width: 0%;
+	transition: width 0.35s ease;
+}
+
+.progress-label {
+	font-size: 0.8em;
+	opacity: 0.6;
+	display: flex;
+	justify-content: space-between;
+}
+
+.strategy-section {
+	padding: 10px 14px;
+	border-bottom: 1px solid var(--joplin-divider-color);
+	display: none;
+}
+
+.strategy-section.visible {
+	display: block;
+}
+
+.strategy-selector-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.strategy-selector-label {
+	font-size: 0.82em;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.strategy-select {
+	flex: 1;
+	padding: 4px 8px;
+	border: 1px solid var(--joplin-divider-color);
+	border-radius: 5px;
+	background: var(--joplin-background-color);
+	color: var(--joplin-color);
+	font-size: 0.82em;
+	font-family: inherit;
+	cursor: pointer;
+	transition: border-color 0.2s;
+}
+
+.strategy-select:hover,
+.strategy-select:focus {
+	outline: none;
+	border-color: var(--accent);
+}
+
+.strategy-score {
+	font-size: 0.82em;
+	opacity: 0.7;
+	margin-bottom: 6px;
+}
+
+.strategy-score strong {
+	color: var(--accent);
+	opacity: 1;
+}
+
+.strategy-pills {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.strategy-pill {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 10px;
+	font-size: 0.75em;
+	background: var(--joplin-divider-color);
+	opacity: 0.8;
+	white-space: nowrap;
+}
+
+.strategy-pill.active {
+	background: var(--accent);
+	color: #fff;
+	opacity: 1;
+	font-weight: 600;
+}
+
+.cluster-list {
+	padding: 6px 0;
+	display: none;
+}
+
+.cluster-list.visible {
+	display: block;
+}
+
+.cluster-card {
+	border-bottom: 1px solid var(--joplin-divider-color);
+}
+
+.cluster-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 14px;
+	cursor: pointer;
+	transition: background-color 0.15s;
+	user-select: none;
+}
+
+.cluster-header:hover {
+	background: var(--joplin-background-color-hover);
+}
+
+.cluster-header-left {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.cluster-title {
+	font-size: 0.9em;
+	font-weight: 600;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.cluster-count {
+	font-size: 0.78em;
+	opacity: 0.55;
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
+.cluster-chevron {
+	width: 0;
+	height: 0;
+	border-top: 4px solid transparent;
+	border-bottom: 4px solid transparent;
+	border-left: 5px solid currentColor;
+	opacity: 0.5;
+	transition: transform 0.2s ease;
+	flex-shrink: 0;
+	margin-left: 4px;
+}
+
+.cluster-card.expanded .cluster-chevron {
+	transform: rotate(90deg);
+}
+
+.cluster-notes {
+	max-height: 0;
+	overflow: hidden;
+	transition: max-height 0.3s ease;
+}
+
+.cluster-card.expanded .cluster-notes {
+	max-height: 5000px;
+}
+
+.note-item {
+	display: flex;
+	align-items: center;
+	padding: 6px 14px 6px 28px;
+	cursor: pointer;
+	transition: background-color 0.12s;
+	font-size: 0.84em;
+}
+
+.note-item:hover {
+	background: var(--joplin-background-color-hover);
+}
+
+.note-title {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.cluster-card.noise .cluster-title {
+	opacity: 0.7;
+}
+
+.empty-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 48px 24px;
+	text-align: center;
+}
+
+.empty-title {
+	font-size: 1em;
+	font-weight: 600;
+	margin-bottom: 6px;
+}
+
+.empty-subtitle {
+	font-size: 0.84em;
+	opacity: 0.55;
+	line-height: 1.5;
+	max-width: 280px;
+}
+
+.error-banner {
+	padding: 10px 14px;
+	background: var(--joplin-color-error);
+	color: #fff;
+	font-size: 0.84em;
+	display: none;
+}
+
+.error-banner.visible {
+	display: block;
+}
+
+/* --- Container & Navigation Layout --- */
+
+.panel-container {
+	display: flex;
+	flex-direction: column;
+	height: 100vh;
+	overflow: hidden;
+}
+
+.panel-main {
+	flex: 1;
+	overflow-y: auto;
+	min-height: 0;
+}
+
+.panel-navigation {
+	display: flex;
+	background: var(--joplin-background-color);
+	border-bottom: 1px solid var(--joplin-divider-color);
+	width: 100%;
+}
+
+.nav-tab {
+	flex: 1;
+	padding: 10px 14px;
+	background: transparent;
+	border: none;
+	border-bottom: 2px solid transparent;
+	color: var(--joplin-color);
+	opacity: 0.65;
+	font-family: inherit;
+	font-size: 0.85em;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	text-align: center;
+}
+
+.nav-tab:hover {
+	opacity: 0.9;
+	background: var(--joplin-background-color-hover);
+}
+
+.nav-tab.active {
+	color: var(--accent);
+	border-bottom-color: var(--accent);
+	font-weight: 600;
+}
+
+/* --- Scrollbar Customization --- */
+
+::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(--joplin-divider-color);
+	border-radius: 3px;
+	transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: var(--accent);
+}
+
+/* --- Config Card (Settings Page) --- */
+
+.config-card {
+	text-align: left;
+	font-size: 0.82em;
+	opacity: 0.7;
+	border: 1px solid var(--joplin-divider-color);
+	border-radius: 6px;
+	padding: 12px;
+	width: 100%;
+	max-width: 300px;
+	background: var(--joplin-background-color-hover);
+}
+
+.config-card-header {
+	font-weight: 600;
+	margin-bottom: 6px;
+	border-bottom: 1px solid var(--joplin-divider-color);
+	padding-bottom: 4px;
+}
+
+.config-card-item {
+	margin: 4px 0;
+}
