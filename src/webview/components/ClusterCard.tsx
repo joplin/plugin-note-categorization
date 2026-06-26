@@ -6,9 +6,10 @@ interface ClusterCardProps {
 	noteIndices: number[];
 	notes: PanelNote[];
 	isNoise?: boolean;
+	tags?: string[];
 }
 
-export const ClusterCard: React.FC<ClusterCardProps> = ({ title, noteIndices, notes, isNoise }) => {
+export const ClusterCard: React.FC<ClusterCardProps> = ({ title, noteIndices, notes, isNoise, tags }) => {
 	const [isExpanded, setIsExpanded] = React.useState(false);
 
 	const handleHeaderClick = () => {
@@ -27,6 +28,15 @@ export const ClusterCard: React.FC<ClusterCardProps> = ({ title, noteIndices, no
 			<div className="cluster-header" onClick={handleHeaderClick}>
 				<div className="cluster-header-left">
 					<span className="cluster-title">{title}</span>
+					{tags && tags.length > 0 && (
+						<div className="cluster-tags">
+							{tags.map((tag, idx) => (
+								<span key={`${tag}-${idx}`} className="cluster-tag">
+									#{tag}
+								</span>
+							))}
+						</div>
+					)}
 				</div>
 				<span className="cluster-count">{countLabel}</span>
 				<span className="cluster-chevron"></span>

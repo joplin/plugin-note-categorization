@@ -219,9 +219,36 @@ body {
 
 .cluster-header-left {
 	display: flex;
-	align-items: center;
-	gap: 8px;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 6px;
 	min-width: 0;
+	flex: 1;
+}
+
+.cluster-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 4px;
+}
+
+.cluster-tag {
+	font-size: 0.8em;
+	font-weight: 600;
+	background: rgba(74, 144, 217, 0.14); /* fallback for older Chromium */
+	background: color-mix(in srgb, var(--accent) 14%, transparent);
+	color: var(--accent);
+	padding: 2px 8px;
+	border-radius: 6px;
+	white-space: nowrap;
+	letter-spacing: 0.2px;
+	transition: all 0.15s ease;
+}
+
+.cluster-tag:hover {
+	background: rgba(74, 144, 217, 0.22); /* fallback for older Chromium */
+	background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .cluster-title {
