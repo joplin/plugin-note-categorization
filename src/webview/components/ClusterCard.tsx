@@ -31,7 +31,7 @@ export const ClusterCard: React.FC<ClusterCardProps> = ({ title, noteIndices, no
 					{tags && tags.length > 0 && (
 						<div className="cluster-tags">
 							{tags.map((tag, idx) => (
-								<span key={`tag-${idx}`} className="cluster-tag">
+								<span key={`${tag}-${idx}`} className="cluster-tag">
 									#{tag}
 								</span>
 							))}

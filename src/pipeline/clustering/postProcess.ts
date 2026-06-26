@@ -299,8 +299,8 @@ export function singularize(word: string): string {
  * of length >= 3 that are not in the stop words list.
  */
 export function tokenize(text: string): string[] {
-	const cleaned = cleanText(text);
-	const matches = cleaned.toLowerCase().match(/[a-z]+/g) || [];
+	const cleaned = cleanText(text).toLowerCase().replace(/[’']/g, '');
+	const matches = cleaned.match(/[a-z]+/g) || [];
 	return matches.map(singularize).filter((w) => w.length >= 3 && !STOP_WORDS.has(w));
 }
 
@@ -376,22 +376,19 @@ export class TfidfExtractor {
 	public extractClusterTags(clusterDocuments: DocumentText[], topK = 5): string[] {
 		if (clusterDocuments.length === 0) return [];
 
-		const clusterWords: string[] = [];
+		const tfs: { [word: string]: number } = {};
+		let totalWords = 0;
+
 		for (const doc of clusterDocuments) {
 			const weighted = this.getWeightedWords(doc);
 			for (const w of weighted) {
-				clusterWords.push(w);
+				tfs[w] = (tfs[w] || 0) + 1;
+				totalWords++;
 			}
 		}
 
-		if (clusterWords.length === 0) return [];
+		if (totalWords === 0) return [];
 
-		const tfs: { [word: string]: number } = {};
-		for (const word of clusterWords) {
-			tfs[word] = (tfs[word] || 0) + 1;
-		}
-
-		const totalWords = clusterWords.length;
 		const scores: { word: string; score: number }[] = [];
 
 		for (const word of Object.keys(tfs)) {
