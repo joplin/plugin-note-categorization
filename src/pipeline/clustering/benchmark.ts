@@ -82,7 +82,11 @@ function logBenchmarkTable(results: BenchmarkResult[]): void {
  * @param config   Categorization config with strategies to benchmark
  * @returns        Benchmark results sorted by silhouette score (descending)
  */
-export function benchmark(vectors: number[][], config: CategorizationConfig): BenchmarkResult[] {
+export function benchmark(
+	vectors: number[][],
+	config: CategorizationConfig,
+	distanceMatrix?: number[][],
+): BenchmarkResult[] {
 	if (vectors.length === 0) {
 		log('No vectors to cluster.');
 		return [];
@@ -92,7 +96,19 @@ export function benchmark(vectors: number[][], config: CategorizationConfig): Be
 
 	// Optionally reduce dimensionality before clustering
 	let clusteringVectors = vectors;
-	if (config.intermediateDim !== null) {
+	if (distanceMatrix) {
+		// Clustering algos need coordinate vectors, not just pairwise distances.
+		// UMAP projects the distance matrix into coordinate space (default 10D).
+		const dim = config.intermediateDim ?? 10;
+		log(`Native mode: projecting distance matrix to ${dim}D coordinates for clustering...`);
+		const projector = new UmapProjector({
+			nComponents: dim,
+			nNeighbors: config.intermediateNeighbors,
+			metric: config.metric,
+			seed: config.seed,
+		});
+		clusteringVectors = projector.project(vectors, distanceMatrix);
+	} else if (config.intermediateDim !== null) {
 		log(`Reducing ${vectors[0].length}D → ${config.intermediateDim}D for clustering...`);
 		const projector = new UmapProjector({
 			nComponents: config.intermediateDim,

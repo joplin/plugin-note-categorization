@@ -1,6 +1,5 @@
 import { fetchAllNotes } from './noteReader';
 import { benchmark } from './clustering/benchmark';
-import { CategorizationConfig } from '../types/cluster';
 import { averageVectors, blendVectors, computeTitleWeight, cosineSimilarity } from './vectorAggregator';
 import { NoteVector, WorkerMessage } from '../types/embed';
 import { PanelNote } from '../types/panel';
@@ -8,24 +7,12 @@ import { isGenericTitle } from '../utils/titleFilter';
 import { log, logErr } from '../utils/logger';
 import { getEncoding } from 'js-tiktoken';
 import { VectorCache } from './vectorCache';
+import { isNativeAiReady, fetchNativeEmbeddings } from './nativeEmbeddingPipeline';
+import { DEFAULT_CONFIG, isValidEmbeddingVector } from './pipelineConfig';
 
 // See testEmbed.ts for rationale on cl100k_base and the 200-token limit.
 const enc = getEncoding('cl100k_base');
 const MAX_TOKENS = 200;
-
-const DEFAULT_CONFIG: CategorizationConfig = {
-	seed: 42,
-	metric: 'cosine',
-	intermediateDim: 10,
-	intermediateNeighbors: 15,
-	strategies: [
-		{ name: 'kmeans-5', algorithm: 'kmeans', K: 5 },
-		{ name: 'kmedoids-5', algorithm: 'kmedoids', K: 5 },
-		{ name: 'hdbscan-3', algorithm: 'hdbscan', minClusterSize: 3 },
-		{ name: 'hdbscan-3-ms2', algorithm: 'hdbscan', minClusterSize: 3, minSamples: 2 },
-		{ name: 'hdbscan-5-ms2', algorithm: 'hdbscan', minClusterSize: 5, minSamples: 2 },
-	],
-};
 
 export interface PipelineCallbacks {
 	onStatus: (text: string) => void;
@@ -50,6 +37,69 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 			callbacks.onError('No notes found. Create some notes and try again.');
 			return;
 		}
+
+		if (notes.length < 3) {
+			callbacks.onError('Too few notes for clustering (need at least 3).');
+			return;
+		}
+
+		if (await isNativeAiReady()) {
+			log('Native AI Search active: using native embeddings pipeline');
+			callbacks.onStatus('Fetching native embeddings...');
+
+			try {
+				const noteIds = notes.map((n) => n.id);
+				const chunks = await fetchNativeEmbeddings(noteIds);
+
+				// Group chunks by noteId
+				const noteChunksMap = new Map<string, number[][]>();
+				for (const chunk of chunks) {
+					const list = noteChunksMap.get(chunk.noteId) || [];
+					list.push(chunk.vector);
+					noteChunksMap.set(chunk.noteId, list);
+				}
+
+				const validNotes: typeof notes = [];
+				const vectors: number[][] = [];
+
+				for (const note of notes) {
+					const chunkVectors = noteChunksMap.get(note.id);
+					if (chunkVectors && chunkVectors.length > 0) {
+						const avgVector = averageVectors(chunkVectors);
+
+						if (isValidEmbeddingVector(avgVector)) {
+							vectors.push(avgVector);
+							validNotes.push(note);
+						} else {
+							logErr(
+								`Native embedding for note "${note.title}" contains NaN/null or wrong dimension. Skipping.`,
+							);
+						}
+					}
+				}
+
+				log(`Grouped embeddings: found ${vectors.length} notes with valid embeddings.`);
+
+				if (validNotes.length < 3) {
+					log('Too few indexed notes found in native DB. Falling back to local ONNX Web Worker.');
+				} else {
+					callbacks.onStatus('Clustering...');
+					const results = benchmark(vectors, DEFAULT_CONFIG);
+
+					const panelNotes: PanelNote[] = validNotes.map((n) => ({
+						noteId: n.id,
+						title: n.title,
+					}));
+
+					callbacks.onComplete(results, panelNotes);
+					return;
+				}
+			} catch (err: any) {
+				logErr('Failed to run native embeddings pipeline:', err.message);
+			}
+		}
+
+		log('Native AI Search unavailable: falling back to local ONNX Web Worker');
 
 		const cache = await VectorCache.create();
 
@@ -141,17 +191,23 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 				const cachedItem = await cache.getItem(note.id);
 
 				if (cachedItem && cachedItem.metadata.hash === currentNoteHash) {
-					log(`[${currentNoteIndex + 1}/${notes.length}] cache hit for "${note.title.slice(0, 30)}"`);
-					noteVectors.push({
-						noteId: note.id,
-						title: note.title,
-						vector: cachedItem.vector,
-						titleWeight: cachedItem.metadata.titleWeight ?? 0,
-					});
-					cachedCount++;
-					currentNoteIndex++;
-					reportProgress();
-					continue;
+					if (isValidEmbeddingVector(cachedItem.vector)) {
+						log(`[${currentNoteIndex + 1}/${notes.length}] cache hit for "${note.title.slice(0, 30)}"`);
+						noteVectors.push({
+							noteId: note.id,
+							title: note.title,
+							vector: cachedItem.vector,
+							titleWeight: cachedItem.metadata.titleWeight ?? 0,
+						});
+						cachedCount++;
+						currentNoteIndex++;
+						reportProgress();
+						continue;
+					} else {
+						log(
+							`[${currentNoteIndex + 1}/${notes.length}] cache invalid (contains null/NaN) for "${note.title.slice(0, 30)}"`,
+						);
+					}
 				}
 
 				break;
