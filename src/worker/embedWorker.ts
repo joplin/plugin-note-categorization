@@ -14,12 +14,25 @@ const POOLING = 'mean' as const;
 env.backends.onnx.wasm!.wasmPaths = '../onnx-dist/';
 
 let embedder: any = null;
+let selectedDevice: any = 'wasm';
+let selectedDtype: any = 'q8';
+
+const loadWasmFallback = async () => {
+	selectedDevice = 'wasm';
+	selectedDtype = 'q8';
+	embedder = await pipeline('feature-extraction', MODEL_ID, {
+		dtype: selectedDtype,
+		device: selectedDevice,
+	});
+	const result = await embedder('warmup text', { pooling: POOLING, normalize: true });
+	if (result && result.data && result.data.some((v: number) => isNaN(v))) {
+		throw new Error('WASM fallback warmup returned NaN values');
+	}
+};
 
 const loadModel = async () => {
 	const t0 = performance.now();
 
-	let selectedDevice: any = 'wasm';
-	let selectedDtype: any = 'q8';
 	let workerGpuExists = false;
 	let adapterFound = false;
 
@@ -43,17 +56,13 @@ const loadModel = async () => {
 			dtype: selectedDtype,
 			device: selectedDevice,
 		});
-		await embedder('warmup text', { pooling: POOLING, normalize: true });
+		const warmupResult = await embedder('warmup text', { pooling: POOLING, normalize: true });
+		if (warmupResult && warmupResult.data && warmupResult.data.some((v: number) => isNaN(v))) {
+			throw new Error('Warmup returned NaN values (WebGPU fp16 numeric instability)');
+		}
 	} catch (e) {
 		if (selectedDevice === 'webgpu') {
-			// WebGPU pipeline or warmup failed, retry with WASM/q8
-			selectedDevice = 'wasm';
-			selectedDtype = 'q8';
-			embedder = await pipeline('feature-extraction', MODEL_ID, {
-				dtype: selectedDtype,
-				device: selectedDevice,
-			});
-			await embedder('warmup text', { pooling: POOLING, normalize: true });
+			await loadWasmFallback();
 		} else {
 			throw e;
 		}
@@ -70,16 +79,30 @@ const loadModel = async () => {
 	};
 };
 
-const embed = async (text: string) => {
+const embed = async (text: string): Promise<{ inferenceTime: number; dimensions: number; embedding: number[] }> => {
 	if (!embedder) throw new Error('Model not loaded');
 
-	const t0 = performance.now();
-	const output = await embedder(text, { pooling: POOLING, normalize: true });
-	const inferenceTime = performance.now() - t0;
-	const dimensions = output.data.length;
-	const embedding = Array.from(output.data as Float32Array);
+	try {
+		const t0 = performance.now();
+		const output = await embedder(text, { pooling: POOLING, normalize: true });
+		const inferenceTime = performance.now() - t0;
+		const dimensions = output.data.length;
+		const embedding = Array.from(output.data as Float32Array);
 
-	return { inferenceTime, dimensions, embedding };
+		if (embedding.some((v) => isNaN(v))) {
+			throw new Error('Inference returned NaN values');
+		}
+
+		return { inferenceTime, dimensions, embedding };
+	} catch (e: any) {
+		if (selectedDevice === 'webgpu') {
+			console.warn('WebGPU inference failed or returned NaN. Falling back to WASM/q8 dynamically...', e);
+			await loadWasmFallback();
+			return await embed(text);
+		} else {
+			throw e;
+		}
+	}
 };
 
 self.addEventListener('message', async (event) => {
