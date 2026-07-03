@@ -41,7 +41,13 @@ export const DashboardPage: React.FC = () => {
 
 			<div className="cluster-list visible">
 				{sortedClusterIds.map((id, idx) => (
-					<ClusterCard key={id} title={`Cluster ${idx + 1}`} noteIndices={clusters[id]} notes={notes} />
+					<ClusterCard
+						key={id}
+						title={`Cluster ${idx + 1}`}
+						noteIndices={clusters[id]}
+						notes={notes}
+						tags={selectedStrategy.tags?.[id]}
+					/>
 				))}
 				{noise.length > 0 && (
 					<ClusterCard title="Uncategorized" noteIndices={noise} notes={notes} isNoise={true} />

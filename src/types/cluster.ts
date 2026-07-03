@@ -41,4 +41,6 @@ export interface BenchmarkResult {
 	/** Number of points classified as noise/outliers (HDBSCAN only) */
 	outlierCount: number;
 	timeMs: number;
+	/** Extracted tags for each cluster, keyed by cluster ID. Outliers (-1) are excluded. */
+	tags?: { [clusterId: number]: string[] };
 }

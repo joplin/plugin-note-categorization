@@ -7,6 +7,7 @@ import { log, logErr } from '../utils/logger';
 import { getEncoding } from 'js-tiktoken';
 import { VectorCache } from '../pipeline/vectorCache';
 import { DEFAULT_CONFIG, isValidEmbeddingVector } from '../pipeline/pipelineConfig';
+import { enrichResultsWithTags } from '../pipeline/clustering/postProcess';
 
 // We use cl100k_base to approximate token counts for chunking.
 // The embedding model (all-MiniLM-L6-v2) uses a WordPiece tokenizer with a
@@ -161,9 +162,20 @@ export const runTestEmbed = async (installDir: string) => {
 				const vectors = noteVectors.map((nv) => nv.vector);
 				const results = benchmark(vectors, DEFAULT_CONFIG);
 
-				// Log note titles per cluster for all strategies, in order (best to worst)
+				const notesMap = new Map(notes.map((n) => [n.id, n]));
+				const allPipelineDocuments = noteVectors.map((nv) => {
+					const originalNote = notesMap.get(nv.noteId);
+					return {
+						title: nv.title,
+						body: originalNote ? originalNote.body : '',
+					};
+				});
+
+				enrichResultsWithTags(results, allPipelineDocuments);
+
+				// Log note titles and tags per cluster for all strategies, in order (best to worst)
 				for (const res of results) {
-					log(`\nCluster assignments (${res.strategyName}):`);
+					log(`\nCluster assignments & Analysis (${res.strategyName}):`);
 					const clusterNotes = new Map<number, string[]>();
 					for (let i = 0; i < noteVectors.length; i++) {
 						const c = res.assignments[i];
@@ -172,7 +184,8 @@ export const runTestEmbed = async (installDir: string) => {
 					}
 					for (const [clusterId, titles] of clusterNotes) {
 						const label = clusterId < 0 ? 'Noise/Outliers' : `Cluster ${clusterId}`;
-						log(`  ${label} (${titles.length} notes):`);
+						const clusterTags = res.tags?.[clusterId] ? ` [Tags: ${res.tags[clusterId].join(', ')}]` : '';
+						log(`  ${label} (${titles.length} notes)${clusterTags}:`);
 						for (const title of titles) {
 							log(`    - ${title}`);
 						}
