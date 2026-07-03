@@ -8,6 +8,7 @@ import { isGenericTitle } from '../utils/titleFilter';
 import { log, logErr } from '../utils/logger';
 import { getEncoding } from 'js-tiktoken';
 import { VectorCache } from './vectorCache';
+import { enrichResultsWithTags } from './clustering/postProcess';
 
 // See testEmbed.ts for rationale on cl100k_base and the 200-token limit.
 const enc = getEncoding('cl100k_base');
@@ -177,6 +178,18 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 
 				const vectors = noteVectors.map((nv) => nv.vector);
 				const results = benchmark(vectors, DEFAULT_CONFIG);
+
+				// Post-process to extract tags/keywords for each cluster
+				const notesMap = new Map(notes.map((n) => [n.id, n]));
+				const allPipelineDocuments = noteVectors.map((nv) => {
+					const originalNote = notesMap.get(nv.noteId);
+					return {
+						title: nv.title,
+						body: originalNote ? originalNote.body : '',
+					};
+				});
+
+				enrichResultsWithTags(results, allPipelineDocuments);
 
 				const panelNotes: PanelNote[] = noteVectors.map((nv) => ({
 					noteId: nv.noteId,
