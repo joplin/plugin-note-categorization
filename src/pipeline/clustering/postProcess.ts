@@ -304,6 +304,27 @@ export function tokenize(text: string): string[] {
 	return matches.map(singularize).filter((w) => w.length >= 3 && !STOP_WORDS.has(w));
 }
 
+/**
+ * Generates unigrams, bigrams, and trigrams from a sequence of tokens.
+ */
+export function getNgrams(tokens: string[]): string[] {
+	const ngrams: string[] = [];
+	const N = tokens.length;
+	for (let i = 0; i < N; i++) {
+		// Unigram
+		ngrams.push(tokens[i]);
+		// Bigram
+		if (i < N - 1) {
+			ngrams.push(`${tokens[i]} ${tokens[i + 1]}`);
+		}
+		// Trigram
+		if (i < N - 2) {
+			ngrams.push(`${tokens[i]} ${tokens[i + 1]} ${tokens[i + 2]}`);
+		}
+	}
+	return ngrams;
+}
+
 export interface DocumentText {
 	title: string;
 	body: string;
@@ -322,7 +343,7 @@ export class TfidfExtractor {
 		const docFreqs: { [word: string]: number } = {};
 
 		for (const doc of allDocuments) {
-			// For IDF, we only need unique words per document — no title weighting needed
+			// For IDF, we only need unique words/ngrams per document — no title weighting needed
 			const uniqueWords = this.getUniqueDocumentWords(doc);
 			for (const word of uniqueWords) {
 				docFreqs[word] = (docFreqs[word] || 0) + 1;
@@ -331,7 +352,7 @@ export class TfidfExtractor {
 
 		for (const word of Object.keys(docFreqs)) {
 			const df = docFreqs[word];
-			// Max DF rule: If a word appears in > 60% of all notes, it is too generic, ignore it.
+			// Max DF rule: If a word/ngram appears in > 60% of all notes, it is too generic, ignore it.
 			if (df / N > 0.6) {
 				this.idfs[word] = 0;
 			} else {
@@ -341,37 +362,41 @@ export class TfidfExtractor {
 	}
 
 	/**
-	 * Returns the unique set of words in a document (title + body), used for IDF counting.
-	 * No title weighting — each document contributes at most 1 to each word's document frequency.
+	 * Returns the unique set of words/ngrams in a document (title + body), used for IDF counting.
+	 * No title weighting — each document contributes at most 1 to each ngram's document frequency.
 	 */
 	private getUniqueDocumentWords(doc: DocumentText): Set<string> {
 		const titleWords = tokenize(doc.title || '');
 		const bodyWords = tokenize(doc.body || '');
-		return new Set([...titleWords, ...bodyWords]);
+		const titleNgrams = getNgrams(titleWords);
+		const bodyNgrams = getNgrams(bodyWords);
+		return new Set([...titleNgrams, ...bodyNgrams]);
 	}
 
 	/**
-	 * Returns words for TF scoring with title words weighted 3x higher.
+	 * Returns ngrams for TF scoring with title words weighted 3x higher.
 	 * Uses push loops instead of spread to avoid excess intermediate array allocations.
 	 */
 	private getWeightedWords(doc: DocumentText): string[] {
 		const titleWords = tokenize(doc.title || '');
 		const bodyWords = tokenize(doc.body || '');
+		const titleNgrams = getNgrams(titleWords);
+		const bodyNgrams = getNgrams(bodyWords);
 		const result: string[] = [];
-		// Title words appear 3 times to boost their term frequency
+		// Title ngrams appear 3 times to boost their term frequency
 		for (let i = 0; i < 3; i++) {
-			for (const w of titleWords) {
-				result.push(w);
+			for (const ng of titleNgrams) {
+				result.push(ng);
 			}
 		}
-		for (const w of bodyWords) {
-			result.push(w);
+		for (const ng of bodyNgrams) {
+			result.push(ng);
 		}
 		return result;
 	}
 
 	/**
-	 * Computes TF-IDF scores for words in the cluster documents and returns the top K.
+	 * Computes TF-IDF scores for ngrams in the cluster documents and returns the top K.
 	 */
 	public extractClusterTags(clusterDocuments: DocumentText[], topK = 5): string[] {
 		if (clusterDocuments.length === 0) return [];
@@ -400,7 +425,24 @@ export class TfidfExtractor {
 		}
 
 		scores.sort((a, b) => b.score - a.score);
-		return scores.slice(0, topK).map((s) => s.word);
+
+		const selectedTags: string[] = [];
+		const usedWords = new Set<string>();
+
+		for (const candidate of scores) {
+			if (selectedTags.length >= topK) break;
+
+			const constituentWords = candidate.word.split(' ');
+			const allUsed = constituentWords.every((w) => usedWords.has(w));
+			if (!allUsed) {
+				selectedTags.push(candidate.word);
+				for (const w of constituentWords) {
+					usedWords.add(w);
+				}
+			}
+		}
+
+		return selectedTags;
 	}
 }
 
