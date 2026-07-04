@@ -7,13 +7,47 @@ interface ClusterCardProps {
 	notes: PanelNote[];
 	isNoise?: boolean;
 	tags?: string[];
+	onRename?: (newName: string) => void;
 }
 
-export const ClusterCard: React.FC<ClusterCardProps> = ({ title, noteIndices, notes, isNoise, tags }) => {
+export const ClusterCard: React.FC<ClusterCardProps> = ({ title, noteIndices, notes, isNoise, tags, onRename }) => {
 	const [isExpanded, setIsExpanded] = React.useState(false);
+	const [isEditing, setIsEditing] = React.useState(false);
+	const [editValue, setEditValue] = React.useState(title);
+
+	React.useEffect(() => {
+		setEditValue(title);
+	}, [title]);
 
 	const handleHeaderClick = () => {
 		setIsExpanded((prev) => !prev);
+	};
+
+	const handleEditClick = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		setIsEditing(true);
+	};
+
+	const handleSave = (e?: React.FormEvent | React.FocusEvent) => {
+		if (e) {
+			e.stopPropagation();
+			if ('preventDefault' in e) e.preventDefault();
+		}
+		const trimmed = editValue.trim();
+		if (trimmed && trimmed !== title && onRename) {
+			onRename(trimmed);
+		}
+		setIsEditing(false);
+	};
+
+	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+		e.stopPropagation();
+		if (e.key === 'Enter') {
+			handleSave();
+		} else if (e.key === 'Escape') {
+			setEditValue(title);
+			setIsEditing(false);
+		}
 	};
 
 	const handleNoteClick = (noteId: string) => {
@@ -27,7 +61,39 @@ export const ClusterCard: React.FC<ClusterCardProps> = ({ title, noteIndices, no
 		<div className={`cluster-card${isNoise ? ' noise' : ''}${isExpanded ? ' expanded' : ''}`}>
 			<div className="cluster-header" onClick={handleHeaderClick}>
 				<div className="cluster-header-left">
-					<span className="cluster-title">{title}</span>
+					{isEditing ? (
+						<input
+							type="text"
+							className="cluster-title-input"
+							value={editValue}
+							onChange={(e) => setEditValue(e.target.value)}
+							onBlur={handleSave}
+							onKeyDown={handleKeyDown}
+							onClick={(e) => e.stopPropagation()}
+							autoFocus
+						/>
+					) : (
+						<div className="cluster-title-container">
+							<span className="cluster-title">{title}</span>
+							{!isNoise && onRename && (
+								<button className="cluster-edit-btn" onClick={handleEditClick} title="Rename category">
+									<svg
+										width="11"
+										height="11"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										strokeWidth="2.0"
+										strokeLinecap="round"
+										strokeLinejoin="round"
+									>
+										<path d="M12 20h9" />
+										<path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+									</svg>
+								</button>
+							)}
+						</div>
+					)}
 					{tags && tags.length > 0 && (
 						<div className="cluster-tags">
 							{tags.map((tag, idx) => (

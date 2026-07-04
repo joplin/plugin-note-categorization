@@ -20,17 +20,40 @@ export class UmapProjector {
 	}
 
 	/**
-	 * Projects high-dimensional vectors to a lower-dimensional space using UMAP.
-	 * @param vectors N vectors of dimension D (N x D)
-	 * @returns N vectors of dimension nComponents
+	 * Projects vectors to a lower-dimensional space using UMAP.
+	 *
+	 * In distance-matrix mode, `vectors` must be index singletons `[[0], [1], ...]`
+	 * because umap-js requires a vectors array to call distanceFn(a, b).
+	 * We encode each point's index as its sole coordinate so the custom distanceFn
+	 * can look up precomputed distances via `distanceMatrix[a[0]][b[0]]`.
 	 */
-	public project(vectors: number[][]): number[][] {
+	public project(vectors: number[][], distanceMatrix?: number[][]): number[][] {
 		if (vectors.length === 0) return [];
 
-		const dim = vectors[0].length;
-		for (let i = 0; i < vectors.length; i++) {
-			if (vectors[i].length !== dim) {
-				throw new Error(`Vector at index ${i} has dimension ${vectors[i].length}, expected ${dim}`);
+		if (distanceMatrix) {
+			const n = vectors.length;
+			if (distanceMatrix.length !== n) {
+				throw new Error(`Distance matrix size (${distanceMatrix.length}) does not match vectors count (${n})`);
+			}
+			for (let i = 0; i < n; i++) {
+				if (vectors[i].length !== 1) {
+					throw new Error(
+						`Vector at index ${i} has dimension ${vectors[i].length}, expected 1 (index singleton)`,
+					);
+				}
+				const idx = vectors[i][0];
+				if (idx < 0 || idx >= n || !Number.isInteger(idx)) {
+					throw new Error(
+						`Vector index at position ${i} is invalid: ${idx}. Must be an integer between 0 and ${n - 1}.`,
+					);
+				}
+			}
+		} else {
+			const dim = vectors[0].length;
+			for (let i = 0; i < vectors.length; i++) {
+				if (vectors[i].length !== dim) {
+					throw new Error(`Vector at index ${i} has dimension ${vectors[i].length}, expected ${dim}`);
+				}
 			}
 		}
 
@@ -46,7 +69,14 @@ export class UmapProjector {
 
 		// nNeighbors must be less than the number of data points
 		const nNeighbors = Math.max(2, Math.min(this.nNeighbors, vectors.length - 1));
-		const distanceFn = this.metric === 'euclidean' ? euclideanDistance : cosineDistance;
+
+		// When using a precomputed distance matrix, vectors are index singletons [i].
+		// The distanceFn extracts indices to look up the precomputed distance.
+		const distanceFn = distanceMatrix
+			? (a: number[], b: number[]) => distanceMatrix[a[0]][b[0]]
+			: this.metric === 'euclidean'
+				? euclideanDistance
+				: cosineDistance;
 
 		const umap = new UMAP({
 			nComponents: this.nComponents,
@@ -57,7 +87,8 @@ export class UmapProjector {
 		});
 
 		log(
-			`UMAP: projecting ${vectors.length} vectors (${dim}D → ${this.nComponents}D), ` +
+			`UMAP: projecting ${vectors.length} vectors ` +
+				`${distanceMatrix ? '(using precomputed distance matrix)' : `(${vectors[0].length}D)`} → ${this.nComponents}D, ` +
 				`neighbors=${nNeighbors}, seed=${this.seed}`,
 		);
 

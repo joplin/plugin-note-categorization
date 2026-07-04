@@ -443,3 +443,46 @@ body {
 .config-card-item {
 	margin: 4px 0;
 }
+
+/* --- Cluster Title Editing --- */
+
+.cluster-title-container {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	max-width: 100%;
+}
+
+.cluster-edit-btn {
+	background: transparent;
+	border: none;
+	padding: 2px 4px;
+	border-radius: 4px;
+	cursor: pointer;
+	color: var(--joplin-color);
+	opacity: 0.4;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	transition: opacity 0.15s, background-color 0.15s;
+}
+
+.cluster-edit-btn:hover {
+	opacity: 0.9;
+	background-color: var(--joplin-divider-color);
+}
+
+.cluster-title-input {
+	font-size: 0.9em;
+	font-weight: 600;
+	font-family: inherit;
+	padding: 2px 6px;
+	border: 1px solid var(--accent);
+	border-radius: 4px;
+	background: var(--joplin-background-color);
+	color: var(--joplin-color);
+	outline: none;
+	min-width: 120px;
+	max-width: 200px;
+	width: 100%;
+}

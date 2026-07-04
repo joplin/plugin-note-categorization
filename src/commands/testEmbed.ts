@@ -1,6 +1,5 @@
 import { fetchAllNotes } from '../pipeline/noteReader';
 import { benchmark } from '../pipeline/clustering/benchmark';
-import { CategorizationConfig } from '../types/cluster';
 import { averageVectors, blendVectors, computeTitleWeight, cosineSimilarity } from '../pipeline/vectorAggregator';
 import { NoteVector, WorkerMessage } from '../types/embed';
 import { isGenericTitle } from '../utils/titleFilter';
@@ -8,6 +7,7 @@ import { log, logErr } from '../utils/logger';
 import { getEncoding } from 'js-tiktoken';
 import { VectorCache } from '../pipeline/vectorCache';
 import { enrichResultsWithTags } from '../pipeline/clustering/postProcess';
+import { DEFAULT_CONFIG, isValidEmbeddingVector } from '../pipeline/pipelineConfig';
 
 // We use cl100k_base to approximate token counts for chunking.
 // The embedding model (all-MiniLM-L6-v2) uses a WordPiece tokenizer with a
@@ -117,16 +117,22 @@ export const runTestEmbed = async (installDir: string) => {
 			const cachedItem = await cache.getItem(note.id);
 
 			if (cachedItem && cachedItem.metadata.hash === currentNoteHash) {
-				log(`[${currentNoteIndex + 1}/${notes.length}] cache hit for "${note.title.slice(0, 30)}"`);
-				noteVectors.push({
-					noteId: note.id,
-					title: note.title,
-					vector: cachedItem.vector,
-					titleWeight: cachedItem.metadata.titleWeight ?? 0,
-				});
-				cachedCount++;
-				currentNoteIndex++;
-				continue;
+				if (isValidEmbeddingVector(cachedItem.vector)) {
+					log(`[${currentNoteIndex + 1}/${notes.length}] cache hit for "${note.title.slice(0, 30)}"`);
+					noteVectors.push({
+						noteId: note.id,
+						title: note.title,
+						vector: cachedItem.vector,
+						titleWeight: cachedItem.metadata.titleWeight ?? 0,
+					});
+					cachedCount++;
+					currentNoteIndex++;
+					continue;
+				} else {
+					log(
+						`[${currentNoteIndex + 1}/${notes.length}] cache invalid (contains null/NaN) for "${note.title.slice(0, 30)}"`,
+					);
+				}
 			}
 
 			break;
@@ -152,23 +158,9 @@ export const runTestEmbed = async (installDir: string) => {
 			// ── Clustering Benchmark ─────────────────────────────
 			// Edit this config to compare different algorithms and dimensions.
 			// Results are printed as a comparison table in the console.
-			const clusterConfig: CategorizationConfig = {
-				seed: 42,
-				metric: 'cosine',
-				intermediateDim: 10,
-				intermediateNeighbors: 15,
-				strategies: [
-					{ name: 'kmeans-5', algorithm: 'kmeans', K: 5 },
-					{ name: 'kmedoids-5', algorithm: 'kmedoids', K: 5 },
-					{ name: 'hdbscan-3', algorithm: 'hdbscan', minClusterSize: 3 },
-					{ name: 'hdbscan-3-ms2', algorithm: 'hdbscan', minClusterSize: 3, minSamples: 2 },
-					{ name: 'hdbscan-5-ms2', algorithm: 'hdbscan', minClusterSize: 5, minSamples: 2 },
-				],
-			};
-
 			if (noteVectors.length >= 3) {
 				const vectors = noteVectors.map((nv) => nv.vector);
-				const results = benchmark(vectors, clusterConfig);
+				const results = benchmark(vectors, DEFAULT_CONFIG);
 
 				const notesMap = new Map(notes.map((n) => [n.id, n]));
 				const allPipelineDocuments = noteVectors.map((nv) => {
@@ -191,7 +183,13 @@ export const runTestEmbed = async (installDir: string) => {
 						clusterNotes.get(c)!.push(noteVectors[i].title);
 					}
 					for (const [clusterId, titles] of clusterNotes) {
-						const label = clusterId < 0 ? 'Noise/Outliers' : `Cluster ${clusterId}`;
+						const generatedName = res.clusterNames?.[clusterId];
+						const label =
+							clusterId < 0
+								? 'Noise/Outliers'
+								: generatedName
+									? `${generatedName} (Cluster ${clusterId})`
+									: `Cluster ${clusterId}`;
 						const clusterTags = res.tags?.[clusterId] ? ` [Tags: ${res.tags[clusterId].join(', ')}]` : '';
 						log(`  ${label} (${titles.length} notes)${clusterTags}:`);
 						for (const title of titles) {
