@@ -878,9 +878,7 @@ export function enrichResultsWithTags(results: BenchmarkResult[], documents: Doc
 		}
 
 		// Resolve duplicates by appending the cluster's top-scoring candidate keyword in parentheses
-		const usedNames = new Set<string>(
-			Object.values(clusterNames).filter((name) => nameCounts[name] === 1),
-		);
+		const usedNames = new Set<string>(Object.values(clusterNames).filter((name) => nameCounts[name] === 1));
 
 		for (const idStr of Object.keys(clusterNames)) {
 			const id = Number(idStr);
