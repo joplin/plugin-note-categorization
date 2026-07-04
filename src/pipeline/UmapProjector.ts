@@ -36,6 +36,11 @@ export class UmapProjector {
 				throw new Error(`Distance matrix size (${distanceMatrix.length}) does not match vectors count (${n})`);
 			}
 			for (let i = 0; i < n; i++) {
+				if (distanceMatrix[i].length !== n) {
+					throw new Error(
+						`Distance matrix row ${i} size (${distanceMatrix[i].length}) does not match vectors count (${n})`,
+					);
+				}
 				if (vectors[i].length !== 1) {
 					throw new Error(
 						`Vector at index ${i} has dimension ${vectors[i].length}, expected 1 (index singleton)`,

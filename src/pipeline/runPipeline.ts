@@ -87,6 +87,14 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 					callbacks.onStatus('Clustering...');
 					const results = benchmark(vectors, DEFAULT_CONFIG);
 
+					// Post-process to extract tags/keywords for each cluster (keep parity with local pipeline)
+					const allPipelineDocuments = validNotes.map((n) => ({
+						title: n.title,
+						body: n.body,
+					}));
+
+					enrichResultsWithTags(results, allPipelineDocuments);
+
 					const panelNotes: PanelNote[] = validNotes.map((n) => ({
 						noteId: n.id,
 						title: n.title,
