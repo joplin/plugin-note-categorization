@@ -1,5 +1,5 @@
 {
-  "name": "joplin-note-categorization-plugin",
+  "name": "joplin-plugin-note-categorization",
   "version": "1.0.0",
   "scripts": {
     "dist": "webpack --env joplin-plugin-config=buildMain && webpack --env joplin-plugin-config=buildExtraScripts && npm run copyAssets && webpack --env joplin-plugin-config=createArchive",
