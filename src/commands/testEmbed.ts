@@ -8,7 +8,6 @@ import { getEncoding } from 'js-tiktoken';
 import { VectorCache } from '../pipeline/vectorCache';
 import { DEFAULT_CONFIG, isValidEmbeddingVector } from '../pipeline/pipelineConfig';
 import { enrichResultsWithTags } from '../pipeline/clustering/postProcess';
-import { DEFAULT_CONFIG, isValidEmbeddingVector } from '../pipeline/pipelineConfig';
 
 // We use cl100k_base to approximate token counts for chunking.
 // The embedding model (all-MiniLM-L6-v2) uses a WordPiece tokenizer with a
