@@ -17,6 +17,7 @@ interface AppStateContextType {
 	runPipeline: () => void;
 	changeStrategy: (index: number) => void;
 	setView: (view: ViewType) => void;
+	updateClusterName: (clusterId: number, newName: string) => void;
 }
 
 const AppStateContext = React.createContext<AppStateContextType | undefined>(undefined);
@@ -125,6 +126,20 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 		setActiveView(view);
 	};
 
+	const updateClusterName = (clusterId: number, newName: string) => {
+		setStrategies((prev) => {
+			const next = [...prev];
+			if (next[selectedStrategyIndex]) {
+				const strat = { ...next[selectedStrategyIndex] };
+				const newClusterNames = { ...strat.clusterNames };
+				newClusterNames[clusterId] = newName;
+				strat.clusterNames = newClusterNames;
+				next[selectedStrategyIndex] = strat;
+			}
+			return next;
+		});
+	};
+
 	return (
 		<AppStateContext.Provider
 			value={{
@@ -139,6 +154,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 				runPipeline,
 				changeStrategy,
 				setView,
+				updateClusterName,
 			}}
 		>
 			{children}

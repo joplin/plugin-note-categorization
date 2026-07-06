@@ -5,7 +5,8 @@ import { StrategySection } from '../components/StrategySection';
 import { ClusterCard } from '../components/ClusterCard';
 
 export const DashboardPage: React.FC = () => {
-	const { isRunning, runPipeline, strategies, selectedStrategyIndex, changeStrategy, notes } = useAppState();
+	const { isRunning, runPipeline, strategies, selectedStrategyIndex, changeStrategy, notes, updateClusterName } =
+		useAppState();
 
 	const selectedStrategy = strategies[selectedStrategyIndex];
 
@@ -43,10 +44,11 @@ export const DashboardPage: React.FC = () => {
 				{sortedClusterIds.map((id, idx) => (
 					<ClusterCard
 						key={id}
-						title={`Cluster ${idx + 1}`}
+						title={selectedStrategy.clusterNames?.[id] || `Cluster ${idx + 1}`}
 						noteIndices={clusters[id]}
 						notes={notes}
 						tags={selectedStrategy.tags?.[id]}
+						onRename={(newName) => updateClusterName(id, newName)}
 					/>
 				))}
 				{noise.length > 0 && (

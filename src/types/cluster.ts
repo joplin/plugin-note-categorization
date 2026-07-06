@@ -43,4 +43,6 @@ export interface BenchmarkResult {
 	timeMs: number;
 	/** Extracted tags for each cluster, keyed by cluster ID. Outliers (-1) are excluded. */
 	tags?: { [clusterId: number]: string[] };
+	/** Generated name for each cluster, keyed by cluster ID. Outliers (-1) are excluded. */
+	clusterNames?: { [clusterId: number]: string };
 }

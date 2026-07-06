@@ -183,7 +183,13 @@ export const runTestEmbed = async (installDir: string) => {
 						clusterNotes.get(c)!.push(noteVectors[i].title);
 					}
 					for (const [clusterId, titles] of clusterNotes) {
-						const label = clusterId < 0 ? 'Noise/Outliers' : `Cluster ${clusterId}`;
+						const generatedName = res.clusterNames?.[clusterId];
+						const label =
+							clusterId < 0
+								? 'Noise/Outliers'
+								: generatedName
+									? `${generatedName} (Cluster ${clusterId})`
+									: `Cluster ${clusterId}`;
 						const clusterTags = res.tags?.[clusterId] ? ` [Tags: ${res.tags[clusterId].join(', ')}]` : '';
 						log(`  ${label} (${titles.length} notes)${clusterTags}:`);
 						for (const title of titles) {
