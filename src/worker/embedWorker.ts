@@ -86,13 +86,14 @@ const embed = async (text: string): Promise<{ inferenceTime: number; dimensions:
 		const t0 = performance.now();
 		const output = await embedder(text, { pooling: POOLING, normalize: true });
 		const inferenceTime = performance.now() - t0;
-		const dimensions = output.data.length;
-		const embedding = Array.from(output.data as Float32Array);
+		const data = output.data as Float32Array;
+		const dimensions = data.length;
 
-		if (embedding.some((v) => isNaN(v))) {
+		if (data.some((v: number) => Number.isNaN(v))) {
 			throw new Error('Inference returned NaN values');
 		}
 
+		const embedding = Array.from(data);
 		return { inferenceTime, dimensions, embedding };
 	} catch (e: any) {
 		if (selectedDevice === 'webgpu') {

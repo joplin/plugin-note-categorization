@@ -54,7 +54,13 @@ export const fetchNativeEmbeddings = async (noteIds: string[]): Promise<NativeEm
 				throw new Error('Embedding model changed mid-fetch. Please restart.');
 			}
 			modelId = page.modelId;
-			chunks.push(...page.chunks);
+			for (const chunk of page.chunks) {
+				if (!chunk.noteId || !Array.isArray(chunk.vector)) {
+					log(`Skipping malformed embedding chunk: ${JSON.stringify(chunk).slice(0, 100)}`);
+					continue;
+				}
+				chunks.push(chunk);
+			}
 			cursor = page.nextCursor;
 
 			if (cursor) {

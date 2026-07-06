@@ -6,7 +6,7 @@ export const EMBEDDING_DIM = 384;
 export function isValidEmbeddingVector(vector: number[] | undefined | null): boolean {
 	if (!vector) return false;
 	if (vector.length !== EMBEDDING_DIM) return false;
-	return vector.every((v) => v !== null && !Number.isNaN(v));
+	return vector.every((v) => Number.isFinite(v));
 }
 
 export const DEFAULT_CONFIG: CategorizationConfig = {

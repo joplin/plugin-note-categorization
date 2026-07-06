@@ -6,6 +6,7 @@ import { isGenericTitle } from '../utils/titleFilter';
 import { log, logErr } from '../utils/logger';
 import { getEncoding } from 'js-tiktoken';
 import { VectorCache } from '../pipeline/vectorCache';
+import { DEFAULT_CONFIG, isValidEmbeddingVector } from '../pipeline/pipelineConfig';
 import { enrichResultsWithTags } from '../pipeline/clustering/postProcess';
 import { DEFAULT_CONFIG, isValidEmbeddingVector } from '../pipeline/pipelineConfig';
 

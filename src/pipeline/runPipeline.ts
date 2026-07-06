@@ -7,9 +7,9 @@ import { isGenericTitle } from '../utils/titleFilter';
 import { log, logErr } from '../utils/logger';
 import { getEncoding } from 'js-tiktoken';
 import { VectorCache } from './vectorCache';
-import { enrichResultsWithTags } from './clustering/postProcess';
 import { isNativeAiReady, fetchNativeEmbeddings } from './nativeEmbeddingPipeline';
 import { DEFAULT_CONFIG, isValidEmbeddingVector } from './pipelineConfig';
+import { enrichResultsWithTags } from './clustering/postProcess';
 
 // See testEmbed.ts for rationale on cl100k_base and the 200-token limit.
 const enc = getEncoding('cl100k_base');
@@ -87,6 +87,7 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 					callbacks.onStatus('Clustering...');
 					const results = benchmark(vectors, DEFAULT_CONFIG);
 
+					// Post-process to extract tags/keywords for each cluster (keep parity with local pipeline)
 					const allPipelineDocuments = validNotes.map((n) => ({
 						title: n.title,
 						body: n.body,
