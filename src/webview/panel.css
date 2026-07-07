@@ -486,3 +486,189 @@ body {
 	max-width: 200px;
 	width: 100%;
 }
+
+/* --- Apply & Revert Changes UI --- */
+
+.apply-section {
+	padding: 16px;
+	background: var(--joplin-background-color);
+	border-top: 1px solid var(--joplin-divider-color);
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin-top: 8px;
+}
+
+.apply-header {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.apply-title {
+	font-size: 0.92em;
+	font-weight: 600;
+}
+
+.apply-subtitle {
+	font-size: 0.78em;
+	opacity: 0.6;
+	line-height: 1.4;
+}
+
+.apply-action-row {
+	display: flex;
+	width: 100%;
+}
+
+.btn-apply-primary {
+	width: 100%;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 8px 16px;
+	border: none;
+	border-radius: 6px;
+	background: var(--accent);
+	color: #fff;
+	font-size: 0.85em;
+	font-weight: 600;
+	font-family: inherit;
+	cursor: pointer;
+	transition: opacity 0.2s, transform 0.1s;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+	height: 34px;
+}
+
+.btn-apply-primary:hover {
+	opacity: 0.9;
+}
+
+.btn-apply-primary:active {
+	transform: scale(0.99);
+}
+.btn-apply-primary:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
+	box-shadow: none;
+	transform: none;
+}
+
+.status-banner-apply {
+	padding: 8px 12px;
+	border-radius: 6px;
+	font-size: 0.8em;
+	font-weight: 500;
+	margin-top: 4px;
+}
+
+.status-banner-apply.error {
+	background: rgba(235, 87, 87, 0.15);
+	color: #eb5757;
+	border: 1px solid rgba(235, 87, 87, 0.3);
+}
+
+.status-banner-apply.success {
+	background: rgba(39, 174, 96, 0.15);
+	color: #27ae60;
+	border: 1px solid rgba(39, 174, 96, 0.3);
+}
+
+.status-banner-apply.info {
+	background: rgba(74, 144, 217, 0.15);
+	color: var(--accent);
+	border: 1px solid rgba(74, 144, 217, 0.3);
+}
+
+.undo-history-card {
+	background: var(--joplin-background-color-hover);
+	border: 1px solid var(--joplin-divider-color);
+	border-radius: 8px;
+	padding: 16px;
+	width: 100%;
+	max-width: 400px;
+	margin: 0 auto;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	text-align: left;
+}
+
+.undo-history-title {
+	font-weight: 600;
+	font-size: 0.95em;
+	border-bottom: 1px solid var(--joplin-divider-color);
+	padding-bottom: 6px;
+}
+
+.undo-history-detail {
+	font-size: 0.82em;
+	line-height: 1.6;
+	opacity: 0.8;
+}
+
+.btn-undo {
+	width: 100%;
+	padding: 8px 14px;
+	border: 1px solid #eb5757;
+	border-radius: 6px;
+	background: transparent;
+	color: #eb5757;
+	font-size: 0.85em;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background-color 0.2s, color 0.2s;
+}
+
+.btn-undo:hover {
+	background: #eb5757;
+	color: #fff;
+}
+
+.btn-undo:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.btn-cleanup {
+	width: 100%;
+	padding: 8px 14px;
+	border: 1px solid var(--accent);
+	border-radius: 6px;
+	background: transparent;
+	color: var(--accent);
+	font-size: 0.85em;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background-color 0.2s, color 0.2s;
+}
+
+.btn-cleanup:hover {
+	background: var(--accent);
+	color: #fff;
+}
+
+.btn-cleanup:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.cleanup-note {
+	font-size: 0.78em;
+	opacity: 0.65;
+	line-height: 1.4;
+	margin-top: 10px;
+	border-top: 1px dashed var(--joplin-divider-color);
+	padding-top: 10px;
+}
+
+/* --- Focus-visible for keyboard accessibility --- */
+
+.btn-run:focus-visible,
+.btn-apply-primary:focus-visible,
+.btn-undo:focus-visible,
+.btn-cleanup:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
