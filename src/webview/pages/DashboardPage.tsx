@@ -87,7 +87,11 @@ export const DashboardPage: React.FC = () => {
 						</div>
 					</div>
 					<div className="apply-action-row">
-						<button className="btn-apply-primary" onClick={handleApply} disabled={isApplying || isUndoing || isCleaningUp}>
+						<button
+							className="btn-apply-primary"
+							onClick={handleApply}
+							disabled={isApplying || isUndoing || isCleaningUp}
+						>
 							{isApplying ? 'Applying changes...' : 'Apply New Categorization'}
 						</button>
 					</div>

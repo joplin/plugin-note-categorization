@@ -134,12 +134,14 @@ joplin.plugins.register({
 						(state) => {
 							panelState = state;
 						},
-					).catch((err) => {
-						log('Error in apply background task: ' + err);
-						panelState = { type: 'apply_error', message: err.message || String(err) };
-					}).finally(() => {
-						operationInProgress = false;
-					});
+					)
+						.catch((err) => {
+							log('Error in apply background task: ' + err);
+							panelState = { type: 'apply_error', message: err.message || String(err) };
+						})
+						.finally(() => {
+							operationInProgress = false;
+						});
 					return panelState;
 
 				case 'undo':
@@ -150,12 +152,14 @@ joplin.plugins.register({
 					panelState = { type: 'undo_status', text: 'Initializing undo...' };
 					undoCategorizationChanges((state) => {
 						panelState = state;
-					}).catch((err) => {
-						log('Error in undo background task: ' + err);
-						panelState = { type: 'undo_error', message: err.message || String(err) };
-					}).finally(() => {
-						operationInProgress = false;
-					});
+					})
+						.catch((err) => {
+							log('Error in undo background task: ' + err);
+							panelState = { type: 'undo_error', message: err.message || String(err) };
+						})
+						.finally(() => {
+							operationInProgress = false;
+						});
 					return panelState;
 
 				case 'cleanUpEmptyNotebooks':
@@ -166,12 +170,14 @@ joplin.plugins.register({
 					panelState = { type: 'cleanup_status', text: 'Checking empty notebooks...' };
 					cleanUpEmptyNotebooks((state) => {
 						panelState = state;
-					}).catch((err) => {
-						log('Error in cleanup background task: ' + err);
-						panelState = { type: 'cleanup_error', message: err.message || String(err) };
-					}).finally(() => {
-						operationInProgress = false;
-					});
+					})
+						.catch((err) => {
+							log('Error in cleanup background task: ' + err);
+							panelState = { type: 'cleanup_error', message: err.message || String(err) };
+						})
+						.finally(() => {
+							operationInProgress = false;
+						});
 					return panelState;
 			}
 		});

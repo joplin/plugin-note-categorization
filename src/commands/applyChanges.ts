@@ -58,7 +58,11 @@ export async function applyCategorizationChanges(
 		const allFoldersList: any[] = [];
 		let folderPage = 1;
 		while (folderPage <= MAX_PAGES) {
-			const res = await joplin.data.get(['folders'], { page: folderPage, limit: 100, fields: ['id', 'title', 'parent_id'] });
+			const res = await joplin.data.get(['folders'], {
+				page: folderPage,
+				limit: 100,
+				fields: ['id', 'title', 'parent_id'],
+			});
 			allFoldersList.push(...res.items);
 			if (!res.has_more) break;
 			folderPage++;
@@ -173,7 +177,7 @@ export async function applyCategorizationChanges(
 				});
 				originalParentId = noteObj.parent_id || '';
 				noteTitle = noteObj.title || '';
-				noteBody = needsBody ? (noteObj.body || '') : '';
+				noteBody = needsBody ? noteObj.body || '' : '';
 			} catch (fetchErr) {
 				log(`Error fetching note data for ${note.noteId}: ${fetchErr}`);
 				continue;
