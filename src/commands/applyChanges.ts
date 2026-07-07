@@ -192,10 +192,10 @@ export async function applyCategorizationChanges(
 				if (mainTagId) {
 					try {
 						await joplin.data.post(['tags', mainTagId, 'notes'], null, { id: note.noteId });
+						addedTagIds.push(mainTagId);
 					} catch (tagErr) {
 						log(`Tag ${mainTagId} may already be on note ${note.noteId}: ${tagErr}`);
 					}
-					addedTagIds.push(mainTagId);
 				}
 
 				// Get all extracted specific tags for this cluster
@@ -211,12 +211,12 @@ export async function applyCategorizationChanges(
 						const { id: tagId, created } = await getOrCreateTagOptimized(tagText);
 						try {
 							await joplin.data.post(['tags', tagId, 'notes'], null, { id: note.noteId });
+							addedTagIds.push(tagId);
+							if (created) {
+								createdTagIds.push(tagId);
+							}
 						} catch (tagErr) {
 							log(`Tag ${tagId} may already be on note ${note.noteId}: ${tagErr}`);
-						}
-						addedTagIds.push(tagId);
-						if (created) {
-							createdTagIds.push(tagId);
 						}
 					}
 				}
@@ -237,9 +237,13 @@ export async function applyCategorizationChanges(
 				}
 
 				if (targetFolderId && targetFolderId !== originalParentId) {
-					await joplin.data.put(['notes', note.noteId], null, { parent_id: targetFolderId });
-					changeEntry.originalParentId = originalParentId;
-					modified = true;
+					try {
+						await joplin.data.put(['notes', note.noteId], null, { parent_id: targetFolderId });
+						changeEntry.originalParentId = originalParentId;
+						modified = true;
+					} catch (moveErr) {
+						log(`Failed to move note ${note.noteId} to folder ${targetFolderId}: ${moveErr}`);
+					}
 				}
 			}
 
@@ -328,11 +332,33 @@ export async function undoCategorizationChanges(setPanelState: (state: PanelMess
 			});
 		}
 
-		// 2. Delete created folders if they exist
+		// 2. Delete created folders if they exist (check for notes AND subfolders)
 		if (changeLog.createdFolderIds && changeLog.createdFolderIds.length > 0) {
 			setPanelState({ type: 'undo_status', text: 'Deleting created notebooks...' });
+
+			// Fetch all folders once to check for subfolders in memory
+			const undoAllFolders: any[] = [];
+			let undoPage = 1;
+			while (undoPage <= 500) {
+				const res = await joplin.data.get(['folders'], {
+					page: undoPage,
+					limit: 100,
+					fields: ['id', 'parent_id'],
+				});
+				undoAllFolders.push(...res.items);
+				if (!res.has_more) break;
+				undoPage++;
+			}
+			const undoParentIds = new Set<string>(undoAllFolders.map((f: any) => f.parent_id).filter((pid) => !!pid));
+
 			for (const folderId of changeLog.createdFolderIds) {
 				try {
+					// Skip if folder has subfolders
+					if (undoParentIds.has(folderId)) {
+						log(`Undo: skipping folder ${folderId} — has subfolders`);
+						continue;
+					}
+					// Skip if folder still has notes
 					const notesInFolder = await joplin.data.get(['folders', folderId, 'notes'], { limit: 1 });
 					if (notesInFolder.items.length > 0) {
 						log(`Undo: skipping non-empty folder ${folderId}`);
