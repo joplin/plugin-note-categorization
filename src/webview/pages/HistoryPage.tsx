@@ -26,9 +26,7 @@ export const HistoryPage: React.FC = () => {
 	}
 
 	return (
-		<div className="empty-state">
-			<div className="empty-title">Change Log / History</div>
-
+		<div className="page-history">
 			{hasChangeLog && logDetails ? (
 				<div className="undo-history-card">
 					<div className="undo-history-title">Active Categorization State</div>
@@ -37,7 +35,12 @@ export const HistoryPage: React.FC = () => {
 							<strong>Applied At:</strong> {new Date(logDetails.timestamp).toLocaleString()}
 						</div>
 						<div>
-							<strong>Method Used:</strong> {logDetails.method}
+							<strong>Method Used:</strong>{' '}
+							{logDetails.method === 'both'
+								? 'Notebooks & Tags'
+								: logDetails.method === 'notebooks'
+									? 'Notebooks Only'
+									: 'Tags Only'}
 						</div>
 						<div>
 							<strong>Modified Items:</strong> {logDetails.notes?.length || 0} notes
@@ -82,22 +85,43 @@ export const HistoryPage: React.FC = () => {
 					{cleanupError && <div className="status-banner-apply error">Error: {cleanupError}</div>}
 				</div>
 			) : (
-				<>
+				<div className="empty-state">
+					<svg
+						className="empty-illustration"
+						width="64"
+						height="64"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						strokeWidth="1.5"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+					>
+						<circle cx="12" cy="12" r="10" />
+						<polyline points="12 6 12 12 16 14" />
+					</svg>
+					<div className="empty-title">No history found</div>
 					<div className="empty-subtitle">
 						No active categorization state in the change log. Run the categorization pipeline and apply
 						changes to see history here.
 					</div>
 					{undoSuccess && (
-						<div className="status-banner-apply success" style={{ marginTop: '16px' }}>
+						<div
+							className="status-banner-apply success"
+							style={{ marginTop: '16px', width: '100%', maxWidth: '320px' }}
+						>
 							Reverted changes successfully!
 						</div>
 					)}
 					{cleanupSuccess && (
-						<div className="status-banner-apply success" style={{ marginTop: '16px' }}>
+						<div
+							className="status-banner-apply success"
+							style={{ marginTop: '16px', width: '100%', maxWidth: '320px' }}
+						>
 							{cleanupSuccess}
 						</div>
 					)}
-				</>
+				</div>
 			)}
 		</div>
 	);
