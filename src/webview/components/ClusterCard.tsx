@@ -8,12 +8,22 @@ interface ClusterCardProps {
 	isNoise?: boolean;
 	tags?: string[];
 	onRename?: (newName: string) => void;
+	onNoteDrop?: (noteIndex: number) => void;
 }
 
-export const ClusterCard: React.FC<ClusterCardProps> = ({ title, noteIndices, notes, isNoise, tags, onRename }) => {
+export const ClusterCard: React.FC<ClusterCardProps> = ({
+	title,
+	noteIndices,
+	notes,
+	isNoise,
+	tags,
+	onRename,
+	onNoteDrop,
+}) => {
 	const [isExpanded, setIsExpanded] = React.useState(false);
 	const [isEditing, setIsEditing] = React.useState(false);
 	const [editValue, setEditValue] = React.useState(title);
+	const [isDragOver, setIsDragOver] = React.useState(false);
 
 	React.useEffect(() => {
 		setEditValue(title);
@@ -58,7 +68,30 @@ export const ClusterCard: React.FC<ClusterCardProps> = ({ title, noteIndices, no
 	const countLabel = count === 1 ? '1 note' : `${count} notes`;
 
 	return (
-		<div className={`cluster-card${isNoise ? ' noise' : ''}${isExpanded ? ' expanded' : ''}`}>
+		<div
+			className={`cluster-card${isNoise ? ' noise' : ''}${isExpanded ? ' expanded' : ''}${isDragOver ? ' drag-over' : ''}`}
+			onDragOver={(e) => {
+				e.preventDefault();
+			}}
+			onDragEnter={(e) => {
+				e.preventDefault();
+				setIsDragOver(true);
+			}}
+			onDragLeave={() => {
+				setIsDragOver(false);
+			}}
+			onDrop={(e) => {
+				e.preventDefault();
+				setIsDragOver(false);
+				const noteIndexStr = e.dataTransfer.getData('text/plain');
+				if (noteIndexStr) {
+					const noteIndex = parseInt(noteIndexStr, 10);
+					if (!isNaN(noteIndex) && onNoteDrop) {
+						onNoteDrop(noteIndex);
+					}
+				}
+			}}
+		>
 			<div className="cluster-header" onClick={handleHeaderClick}>
 				<div className="cluster-header-left">
 					{isEditing ? (
@@ -112,7 +145,15 @@ export const ClusterCard: React.FC<ClusterCardProps> = ({ title, noteIndices, no
 					const note = notes[idx];
 					if (!note) return null;
 					return (
-						<div key={note.noteId} className="note-item" onClick={() => handleNoteClick(note.noteId)}>
+						<div
+							key={note.noteId}
+							className="note-item"
+							onClick={() => handleNoteClick(note.noteId)}
+							draggable="true"
+							onDragStart={(e) => {
+								e.dataTransfer.setData('text/plain', idx.toString());
+							}}
+						>
 							<svg
 								width="13"
 								height="13"

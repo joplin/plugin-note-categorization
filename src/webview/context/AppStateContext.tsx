@@ -18,6 +18,8 @@ interface AppStateContextType {
 	changeStrategy: (index: number) => void;
 	setView: (view: ViewType) => void;
 	updateClusterName: (clusterId: number, newName: string) => void;
+	moveNoteToCluster: (noteIndex: number, targetClusterId: number) => void;
+	addCluster: (name: string) => boolean;
 
 	// settings states
 	settings: {
@@ -290,6 +292,64 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 		});
 	};
 
+	const moveNoteToCluster = (noteIndex: number, targetClusterId: number) => {
+		setStrategies((prev) => {
+			const next = [...prev];
+			if (next[selectedStrategyIndex]) {
+				const strat = { ...next[selectedStrategyIndex] };
+				const newAssignments = [...strat.assignments];
+
+				if (noteIndex < 0 || noteIndex >= newAssignments.length) return prev;
+				if (newAssignments[noteIndex] === targetClusterId) return prev;
+
+				newAssignments[noteIndex] = targetClusterId;
+				strat.assignments = newAssignments;
+				next[selectedStrategyIndex] = strat;
+			}
+			return next;
+		});
+	};
+
+	const addCluster = (name: string): boolean => {
+		const trimmedName = name.trim();
+		if (!trimmedName) return false;
+
+		const currentStrategy = strategies[selectedStrategyIndex];
+		if (!currentStrategy) return false;
+
+		const clusterNames = currentStrategy.clusterNames || {};
+		const nameExists = Object.values(clusterNames).some((n) => n.toLowerCase() === trimmedName.toLowerCase());
+
+		if (nameExists) {
+			return false;
+		}
+
+		setStrategies((prev) => {
+			const next = [...prev];
+			const strat = next[selectedStrategyIndex];
+			if (strat) {
+				const newStrat = { ...strat };
+				const newClusterNames = { ...strat.clusterNames };
+				const newTags = { ...strat.tags };
+
+				const clusterIds = Object.keys(newClusterNames).map(Number);
+				const newClusterId = clusterIds.length > 0 ? Math.max(...clusterIds) + 1 : 0;
+
+				newClusterNames[newClusterId] = trimmedName;
+				newTags[newClusterId] = [];
+
+				newStrat.clusterNames = newClusterNames;
+				newStrat.tags = newTags;
+				newStrat.clusterCount = (newStrat.clusterCount || 0) + 1;
+
+				next[selectedStrategyIndex] = newStrat;
+			}
+			return next;
+		});
+
+		return true;
+	};
+
 	const updateSetting = async (key: string, value: any) => {
 		try {
 			await webviewApi.postMessage({
@@ -391,6 +451,8 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 				changeStrategy,
 				setView,
 				updateClusterName,
+				moveNoteToCluster,
+				addCluster,
 				settings,
 				updateSetting,
 				fetchSettings,
