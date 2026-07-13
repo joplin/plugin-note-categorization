@@ -796,3 +796,129 @@ body {
 	outline: 2px solid color-mix(in srgb, var(--joplin-color) 40%, transparent);
 	outline-offset: 2px;
 }
+
+/* DRAG AND DROP & CUSTOM CLUSTERS */
+
+.note-item {
+	user-select: none;
+	-webkit-user-drag: element;
+}
+
+.note-item[draggable="true"] {
+	cursor: grab;
+}
+
+.note-item[draggable="true"]:active {
+	cursor: grabbing;
+}
+
+.cluster-card {
+	transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.cluster-card.drag-over {
+	background-color: var(--joplin-background-color-hover) !important;
+	border: 1px dashed var(--accent) !important;
+}
+
+.add-cluster-card {
+	border: 1px dashed var(--joplin-divider-color);
+	background: transparent;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 12px 14px;
+	border-radius: 6px;
+	margin: 10px 14px;
+	transition: all 0.2s ease;
+}
+
+.add-cluster-card:hover {
+	border-color: var(--accent);
+	background: var(--joplin-background-color-hover);
+}
+
+.add-cluster-card.editing {
+	border-style: solid;
+	border-color: var(--joplin-divider-color);
+	display: block;
+	background: var(--joplin-background-color);
+}
+
+.add-cluster-trigger-btn {
+	background: none;
+	border: none;
+	color: var(--joplin-color);
+	font-family: inherit;
+	font-size: 0.88em;
+	font-weight: 600;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	justify-content: center;
+	opacity: 0.7;
+	transition: opacity 0.2s;
+}
+
+.add-cluster-trigger-btn:hover {
+	opacity: 1;
+}
+
+.add-cluster-icon {
+	font-size: 1.2em;
+	color: var(--accent);
+}
+
+.add-cluster-form {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	width: 100%;
+}
+
+.add-cluster-error {
+	font-size: 0.75em;
+	color: #dc2626;
+	margin-top: -2px;
+	margin-left: 2px;
+}
+
+.add-cluster-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+.btn-add-confirm {
+	padding: 4px 10px;
+	background: var(--accent);
+	border: none;
+	color: #fff;
+	font-size: 0.8em;
+	font-weight: 600;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+.btn-add-confirm:hover {
+	opacity: 0.9;
+}
+
+.btn-add-cancel {
+	padding: 4px 10px;
+	background: transparent;
+	border: 1px solid var(--joplin-divider-color);
+	color: var(--joplin-color);
+	font-size: 0.8em;
+	border-radius: 4px;
+	cursor: pointer;
+	opacity: 0.8;
+}
+
+.btn-add-cancel:hover {
+	opacity: 1;
+	background: var(--joplin-background-color-hover);
+}
+
