@@ -7,11 +7,21 @@ interface StrategySectionProps {
 	onStrategyChange: (index: number) => void;
 }
 
-/** Shortens 'hdbscan-5-ms2' → 'hdbscan-5' for pill labels */
-function abbreviateStrategy(name: string): string {
-	if (!name) return '';
-	const parts = name.split('-');
-	return parts.length > 2 ? parts[0] + '-' + parts[1] : name;
+/** Returns display names for dropdown and pills, marking testing and recommended strategies */
+function getStrategyDisplayName(name: string, isHighest: boolean): string {
+	let baseName = name;
+	if (name === 'hdbscan') {
+		baseName = 'HDBSCAN';
+	} else if (name.startsWith('kmeans')) {
+		baseName = 'K-Means (Testing)';
+	} else if (name.startsWith('kmedoids')) {
+		baseName = 'K-Medoids (Testing)';
+	}
+
+	if (isHighest) {
+		return `${baseName} (Recommended)`;
+	}
+	return baseName;
 }
 
 export const StrategySection: React.FC<StrategySectionProps> = ({
@@ -38,7 +48,7 @@ export const StrategySection: React.FC<StrategySectionProps> = ({
 				>
 					{strategies.map((s, idx) => (
 						<option key={idx} value={idx}>
-							{s.strategyName} ({s.silhouetteScore.toFixed(2)})
+							{getStrategyDisplayName(s.strategyName, idx === 0)} ({s.silhouetteScore.toFixed(2)})
 						</option>
 					))}
 				</select>
@@ -51,11 +61,14 @@ export const StrategySection: React.FC<StrategySectionProps> = ({
 			</div>
 
 			<div className="strategy-pills">
-				{strategies.map((s, idx) => (
-					<span key={idx} className={`strategy-pill${idx === selectedStrategyIndex ? ' active' : ''}`}>
-						{abbreviateStrategy(s.strategyName)}: {s.silhouetteScore.toFixed(2)}
-					</span>
-				))}
+				{strategies
+					.map((s, idx) => ({ s, idx }))
+					.filter(({ s }) => !s.strategyName.startsWith('kmeans') && !s.strategyName.startsWith('kmedoids'))
+					.map(({ s, idx }) => (
+						<span key={idx} className={`strategy-pill${idx === selectedStrategyIndex ? ' active' : ''}`}>
+							{getStrategyDisplayName(s.strategyName, false)}: {s.silhouetteScore.toFixed(2)}
+						</span>
+					))}
 			</div>
 		</div>
 	);

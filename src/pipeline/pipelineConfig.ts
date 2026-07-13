@@ -17,7 +17,7 @@ export const DEFAULT_CONFIG: CategorizationConfig = {
 	strategies: [
 		{ name: 'kmeans-6', algorithm: 'kmeans', K: 6 },
 		{ name: 'kmedoids-6', algorithm: 'kmedoids', K: 6 },
-		{ name: 'hdbscan-tuned', algorithm: 'hdbscan', minClusterSize: 4, minSamples: 1 },
-		{ name: 'hdbscan-conservative', algorithm: 'hdbscan', minClusterSize: 3, minSamples: 2 },
+		// { name: 'hdbscan-tuned', algorithm: 'hdbscan', minClusterSize: 4, minSamples: 1 },
+		{ name: 'hdbscan', algorithm: 'hdbscan', minClusterSize: 3, minSamples: 2 },
 	],
 };

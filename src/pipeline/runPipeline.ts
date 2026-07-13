@@ -11,7 +11,12 @@ import { isNativeAiReady, fetchNativeEmbeddings } from './nativeEmbeddingPipelin
 import { DEFAULT_CONFIG, isValidEmbeddingVector } from './pipelineConfig';
 import { enrichResultsWithTags } from './clustering/postProcess';
 
-// See testEmbed.ts for rationale on cl100k_base and the 200-token limit.
+// We use cl100k_base to approximate token counts for chunking.
+// The embedding model (all-MiniLM-L6-v2) uses a WordPiece tokenizer with a
+// 512-token limit. WordPiece has a smaller vocabulary (~30k vs ~100k) so it produces
+// ~1.3-1.5x more tokens than cl100k_base for the same text. A limit of 200
+// cl100k_base tokens expands to ~300 WordPiece tokens in the worst case,
+// well within the model's 512-token ceiling.
 const enc = getEncoding('cl100k_base');
 const MAX_TOKENS = 200;
 
@@ -25,8 +30,8 @@ export interface PipelineCallbacks {
 /**
  * Runs the full embedding + clustering pipeline, reporting progress via callbacks.
  *
- * This is the same logic as testEmbed.ts, but decoupled from console logging
- * so the panel (or any other caller) can receive live updates.
+ * This process is decoupled from console logging so the panel (or any other caller)
+ * can receive live updates.
  */
 export const runPipeline = async (installDir: string, callbacks: PipelineCallbacks): Promise<void> => {
 	try {
