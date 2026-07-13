@@ -85,7 +85,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 	const [settings, setSettings] = React.useState({
 		metric: 'cosine',
-		parentNotebook: 'AI Categorized Notes',
+		parentNotebook: '',
 		changeLog: '',
 	});
 
@@ -106,7 +106,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 			if (res) {
 				setSettings({
 					metric: (res as any)['categorization.metric'] || 'cosine',
-					parentNotebook: (res as any)['categorization.parentNotebook'] || 'AI Categorized Notes',
+					parentNotebook: (res as any)['categorization.parentNotebook'] || '',
 					changeLog: (res as any)['categorization.changeLog'] || '',
 				});
 			}

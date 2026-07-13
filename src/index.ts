@@ -17,27 +17,6 @@ joplin.plugins.register({
 
 		// Register setting items
 		await joplin.settings.registerSettings({
-			'categorization.metric': {
-				value: 'cosine',
-				type: SettingType.String,
-				section: 'aiCategorization',
-				public: true,
-				isEnum: true,
-				options: {
-					cosine: 'Cosine Similarity',
-					euclidean: 'Euclidean Distance',
-				},
-				label: 'Distance Metric',
-				description: 'The metric used to compute distances between note embeddings.',
-			},
-			'categorization.parentNotebook': {
-				value: 'AI Categorized Notes',
-				type: SettingType.String,
-				section: 'aiCategorization',
-				public: true,
-				label: 'Parent Notebook',
-				description: 'The parent notebook name where categorized folders will be placed.',
-			},
 			'categorization.changeLog': {
 				value: '',
 				type: SettingType.String,
@@ -97,8 +76,8 @@ joplin.plugins.register({
 
 				case 'getSettings':
 					return {
-						'categorization.metric': await joplin.settings.value('categorization.metric'),
-						'categorization.parentNotebook': await joplin.settings.value('categorization.parentNotebook'),
+						'categorization.metric': 'cosine',
+						'categorization.parentNotebook': '',
 						'categorization.changeLog': await joplin.settings.value('categorization.changeLog'),
 					};
 
