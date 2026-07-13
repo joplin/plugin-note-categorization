@@ -13,6 +13,8 @@ export const DashboardPage: React.FC = () => {
 		changeStrategy,
 		notes,
 		updateClusterName,
+		moveNoteToCluster,
+		addCluster,
 		isApplying,
 		applyProgress,
 		applyError,
@@ -24,10 +26,19 @@ export const DashboardPage: React.FC = () => {
 
 	const selectedStrategy = strategies[selectedStrategyIndex];
 
+	const [isAddingCluster, setIsAddingCluster] = React.useState(false);
+	const [newClusterName, setNewClusterName] = React.useState('');
+	const [duplicateError, setDuplicateError] = React.useState(false);
+
 	const clusters: { [key: number]: number[] } = {};
 	const noise: number[] = [];
 
 	if (selectedStrategy) {
+		const clusterNames = selectedStrategy.clusterNames || {};
+		Object.keys(clusterNames).forEach((clusterId) => {
+			clusters[Number(clusterId)] = [];
+		});
+
 		selectedStrategy.assignments.forEach((clusterId, noteIndex) => {
 			if (clusterId === -1) {
 				noise.push(noteIndex);
@@ -43,6 +54,21 @@ export const DashboardPage: React.FC = () => {
 	const sortedClusterIds = Object.keys(clusters)
 		.map(Number)
 		.sort((a, b) => clusters[b].length - clusters[a].length);
+
+	const handleAddClusterSubmit = (e?: React.FormEvent) => {
+		if (e) e.preventDefault();
+		const name = newClusterName.trim();
+		if (name) {
+			const success = addCluster(name);
+			if (success) {
+				setNewClusterName('');
+				setIsAddingCluster(false);
+				setDuplicateError(false);
+			} else {
+				setDuplicateError(true);
+			}
+		}
+	};
 
 	const handleApply = () => {
 		applyChanges({
@@ -62,18 +88,75 @@ export const DashboardPage: React.FC = () => {
 			/>
 
 			<div className="cluster-list visible">
-				{sortedClusterIds.map((id) => (
+				{selectedStrategy &&
+					sortedClusterIds.map((id) => (
+						<ClusterCard
+							key={id}
+							title={selectedStrategy.clusterNames?.[id] || `Cluster ${id + 1}`}
+							noteIndices={clusters[id]}
+							notes={notes}
+							tags={selectedStrategy.tags?.[id]}
+							onRename={(newName) => updateClusterName(id, newName)}
+							onNoteDrop={(noteIndex) => moveNoteToCluster(noteIndex, id)}
+						/>
+					))}
+
+				{selectedStrategy && (
+					<div className={`cluster-card add-cluster-card${isAddingCluster ? ' editing' : ''}`}>
+						{isAddingCluster ? (
+							<form onSubmit={handleAddClusterSubmit} className="add-cluster-form">
+								<input
+									type="text"
+									className="cluster-title-input"
+									placeholder="Category name..."
+									value={newClusterName}
+									onChange={(e) => {
+										setNewClusterName(e.target.value);
+										setDuplicateError(false);
+									}}
+									autoFocus
+									onKeyDown={(e) => {
+										if (e.key === 'Escape') {
+											setIsAddingCluster(false);
+											setNewClusterName('');
+											setDuplicateError(false);
+										}
+									}}
+								/>
+								{duplicateError && <span className="add-cluster-error">Name already exists</span>}
+								<div className="add-cluster-actions">
+									<button type="submit" className="btn-add-confirm">
+										Create
+									</button>
+									<button
+										type="button"
+										className="btn-add-cancel"
+										onClick={() => {
+											setIsAddingCluster(false);
+											setNewClusterName('');
+											setDuplicateError(false);
+										}}
+									>
+										Cancel
+									</button>
+								</div>
+							</form>
+						) : (
+							<button className="add-cluster-trigger-btn" onClick={() => setIsAddingCluster(true)}>
+								<span className="add-cluster-icon">+</span> Add custom category
+							</button>
+						)}
+					</div>
+				)}
+
+				{selectedStrategy && (
 					<ClusterCard
-						key={id}
-						title={selectedStrategy.clusterNames?.[id] || `Cluster ${id + 1}`}
-						noteIndices={clusters[id]}
+						title="Uncategorized"
+						noteIndices={noise}
 						notes={notes}
-						tags={selectedStrategy.tags?.[id]}
-						onRename={(newName) => updateClusterName(id, newName)}
+						isNoise={true}
+						onNoteDrop={(noteIndex) => moveNoteToCluster(noteIndex, -1)}
 					/>
-				))}
-				{noise.length > 0 && (
-					<ClusterCard title="Uncategorized" noteIndices={noise} notes={notes} isNoise={true} />
 				)}
 			</div>
 
