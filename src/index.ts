@@ -1,6 +1,5 @@
 import joplin from 'api';
 import { MenuItemLocation, ToolbarButtonLocation, SettingItemType as SettingType } from 'api/types';
-import { runTestEmbed } from './commands/testEmbed';
 import { runPipeline } from './pipeline/runPipeline';
 import { PanelMessage, WebviewMessage } from './types/panel';
 import { log } from './utils/logger';
@@ -50,18 +49,6 @@ joplin.plugins.register({
 		});
 
 		const installDir = await joplin.plugins.installationDir();
-
-		await joplin.commands.register({
-			name: 'aiCategorise.testEmbed',
-			label: 'AI Categorise: Test Embedding',
-			execute: async () => runTestEmbed(installDir),
-		});
-
-		await joplin.views.menuItems.create(
-			'aiCategorise.testEmbedMenuItem',
-			'aiCategorise.testEmbed',
-			MenuItemLocation.Tools,
-		);
 
 		// Panel starts hidden; user opens via toolbar button or View menu
 		const panel = await joplin.views.panels.create('aiCategorise.panel');

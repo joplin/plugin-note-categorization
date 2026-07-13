@@ -133,15 +133,19 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 					});
 					break;
 
-				case 'results':
+				case 'results': {
 					stopPolling();
 					setIsRunning(false);
 					setStrategies(msg.strategies || []);
 					setNotes(msg.notes || []);
-					setSelectedStrategyIndex(0);
+					const nonTestingIdx = (msg.strategies || []).findIndex(
+						(s: any) => !s.strategyName.startsWith('kmeans') && !s.strategyName.startsWith('kmedoids'),
+					);
+					setSelectedStrategyIndex(nonTestingIdx !== -1 ? nonTestingIdx : 0);
 					setError(null);
 					setActiveView('dashboard');
 					break;
+				}
 
 				case 'error':
 					stopPolling();
