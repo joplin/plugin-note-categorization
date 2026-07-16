@@ -1,24 +1,13 @@
 import { fetchAllNotes } from './noteReader';
 import { benchmark } from './clustering/benchmark';
-import { averageVectors, blendVectors, computeTitleWeight, cosineSimilarity } from './vectorAggregator';
-import { NoteVector, WorkerMessage } from '../types/embed';
+import { averageVectors } from './vectorAggregator';
 import { PanelNote } from '../types/panel';
-import { isGenericTitle } from '../utils/titleFilter';
 import { log, logErr } from '../utils/logger';
-import { getEncoding } from 'js-tiktoken';
 import { VectorCache } from './vectorCache';
 import { isNativeAiReady, fetchNativeEmbeddings } from './nativeEmbeddingPipeline';
 import { DEFAULT_CONFIG, isValidEmbeddingVector } from './pipelineConfig';
 import { enrichResultsWithTags } from './clustering/postProcess';
-
-// We use cl100k_base to approximate token counts for chunking.
-// The embedding model (all-MiniLM-L6-v2) uses a WordPiece tokenizer with a
-// 512-token limit. WordPiece has a smaller vocabulary (~30k vs ~100k) so it produces
-// ~1.3-1.5x more tokens than cl100k_base for the same text. A limit of 200
-// cl100k_base tokens expands to ~300 WordPiece tokens in the worst case,
-// well within the model's 512-token ceiling.
-const enc = getEncoding('cl100k_base');
-const MAX_TOKENS = 200;
+import { EmbeddingWorkerOrchestrator } from './EmbeddingWorkerOrchestrator';
 
 export interface PipelineCallbacks {
 	onStatus: (text: string) => void;
@@ -129,243 +118,58 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 
 		await cache.beginUpdate();
 
-		callbacks.onStatus('Loading model...');
-		const worker = new Worker(`${installDir}/worker/embedWorker.js`);
-
-		let currentNoteIndex = 0;
-		let currentChunkIndex = 0;
-		let currentNoteChunks: string[] = [];
-		let currentChunkEmbeddings: number[][] = [];
-		let currentBodyVector: number[] = [];
-		let isEmbeddingTitle = false;
-		let totalInferenceTime = 0;
-		let skippedCount = 0;
-		let cachedCount = 0;
-		let currentNoteHash = '';
 		const batchStartTime = performance.now();
-		const noteVectors: NoteVector[] = [];
+		const orchestrator = new EmbeddingWorkerOrchestrator(installDir, notes, cache, callbacks);
 
-		const reportProgress = () => {
-			// current = notes finalized so far (embedded + cached + skipped)
-			const processed = noteVectors.length + skippedCount;
-			callbacks.onProgress(processed, notes.length, cachedCount, skippedCount);
-		};
-
-		const prepareNoteChunks = (text: string): string[] => {
-			const tokens = enc.encode(text);
-			const chunks: string[] = [];
-			if (tokens.length === 0) return [];
-
-			for (let i = 0; i < tokens.length; i += MAX_TOKENS) {
-				const chunkTokens = tokens.slice(i, i + MAX_TOKENS);
-				chunks.push(enc.decode(chunkTokens));
-			}
-			return chunks;
-		};
-
-		const finalizeNote = async (vector: number[], titleWeight: number, hash: string) => {
-			const note = notes[currentNoteIndex];
-			noteVectors.push({ noteId: note.id, title: note.title, vector, titleWeight });
-
-			await cache.upsertItem(note.id, vector, {
-				title: note.title,
-				hash,
-				updatedTime: note.updated_time,
-				titleWeight,
-			});
-
-			reportProgress();
-
-			currentNoteIndex++;
-			await processNextNote();
-		};
-
-		const processNextNote = async () => {
-			currentChunkIndex = 0;
-			currentNoteChunks = [];
-			currentChunkEmbeddings = [];
-			currentBodyVector = [];
-			isEmbeddingTitle = false;
-
-			// Skip notes with empty body and generic title, and bypass cached notes
-			while (currentNoteIndex < notes.length) {
-				const note = notes[currentNoteIndex];
-
-				if (note.body.length === 0 && isGenericTitle(note.title)) {
-					log(
-						`[${currentNoteIndex + 1}/${notes.length}] skipped "${note.title.slice(0, 30)}" (empty body, generic title)`,
-					);
-					skippedCount++;
-					currentNoteIndex++;
-					reportProgress();
-					continue;
-				}
-
-				currentNoteHash = cache.computeHash(note.title, note.body);
-				const cachedItem = await cache.getItem(note.id);
-
-				if (cachedItem && cachedItem.metadata.hash === currentNoteHash) {
-					if (isValidEmbeddingVector(cachedItem.vector)) {
-						log(`[${currentNoteIndex + 1}/${notes.length}] cache hit for "${note.title.slice(0, 30)}"`);
-						noteVectors.push({
-							noteId: note.id,
-							title: note.title,
-							vector: cachedItem.vector,
-							titleWeight: cachedItem.metadata.titleWeight ?? 0,
-						});
-						cachedCount++;
-						currentNoteIndex++;
-						reportProgress();
-						continue;
-					} else {
-						log(
-							`[${currentNoteIndex + 1}/${notes.length}] cache invalid (contains null/NaN) for "${note.title.slice(0, 30)}"`,
-						);
-					}
-				}
-
-				break;
-			}
-
-			if (currentNoteIndex >= notes.length) {
-				const totalTime = performance.now() - batchStartTime;
-				log(
-					`Batch complete: ${notes.length} notes, ${noteVectors.length - cachedCount} embedded, ` +
-						`${cachedCount} cached, ${skippedCount} skipped in ${Math.round(totalTime)}ms ` +
-						`(inference: ${Math.round(totalInferenceTime)}ms)`,
-				);
-
-				await cache.endUpdate();
-				worker.terminate();
-
-				callbacks.onStatus('Clustering...');
-
-				if (noteVectors.length < 3) {
-					callbacks.onError('Too few notes for clustering (need at least 3).');
-					return;
-				}
-
-				const vectors = noteVectors.map((nv) => nv.vector);
-				const results = benchmark(vectors, DEFAULT_CONFIG);
-
-				// Post-process to extract tags/keywords for each cluster
-				const notesMap = new Map(notes.map((n) => [n.id, n]));
-				const allPipelineDocuments = noteVectors.map((nv) => {
-					const originalNote = notesMap.get(nv.noteId);
-					return {
-						title: nv.title,
-						body: originalNote ? originalNote.body : '',
-					};
-				});
-
-				enrichResultsWithTags(results, allPipelineDocuments);
-
-				const panelNotes: PanelNote[] = noteVectors.map((nv) => ({
-					noteId: nv.noteId,
-					title: nv.title,
-				}));
-
-				callbacks.onComplete(results, panelNotes);
-				return;
-			}
-
-			const note = notes[currentNoteIndex];
-			callbacks.onStatus(`Embedding "${note.title.slice(0, 40)}"...`);
-
-			if (note.body.length === 0) {
-				isEmbeddingTitle = true;
-				worker.postMessage({ type: 'embed', text: note.title, noteId: note.id });
-			} else {
-				currentNoteChunks = prepareNoteChunks(note.body);
-				if (currentNoteChunks.length === 0) {
-					// Whitespace-only body — treat as title-only note
-					isEmbeddingTitle = true;
-					worker.postMessage({ type: 'embed', text: note.title, noteId: note.id });
-				} else {
-					worker.postMessage({
-						type: 'embed',
-						text: currentNoteChunks[0],
-						noteId: note.id,
-					});
-				}
-			}
-		};
-
-		worker.onerror = (err: ErrorEvent) => {
-			logErr('Worker error:', err.message);
+		let result;
+		try {
+			result = await orchestrator.run();
+		} catch (err) {
 			cache.cancelUpdate();
-			worker.terminate();
-			callbacks.onError('Embedding worker failed: ' + err.message);
-		};
+			const message = err instanceof Error ? err.message : String(err);
+			callbacks.onError('Pipeline failed: ' + message);
+			return;
+		}
 
-		worker.onmessage = async (event: MessageEvent<WorkerMessage>) => {
-			const data = event.data;
+		const { noteVectors, cachedCount, skippedCount, totalInferenceTime } = result;
 
-			if (data.type === 'load-result') {
-				if (data.success) {
-					log(`Model loaded in ${(data.loadTime / 1000).toFixed(1)}s, device: ${data.device}`);
-					callbacks.onStatus('Embedding notes...');
-					await processNextNote();
-				} else {
-					logErr('Model load failed:', data.error);
-					cache.cancelUpdate();
-					worker.terminate();
-					callbacks.onError('Failed to load embedding model: ' + (data.error || 'unknown error'));
-				}
-				return;
-			}
+		const totalTime = performance.now() - batchStartTime;
+		log(
+			`Batch complete: ${notes.length} notes, ${noteVectors.length - cachedCount} embedded, ` +
+				`${cachedCount} cached, ${skippedCount} skipped in ${Math.round(totalTime)}ms ` +
+				`(inference: ${Math.round(totalInferenceTime)}ms)`,
+		);
 
-			if (data.type === 'embed-result') {
-				const note = notes[currentNoteIndex];
+		await cache.endUpdate();
 
-				if (!data.success) {
-					logErr(`Failed to embed note "${note.title.slice(0, 30)}":`, data.error);
-					currentNoteIndex++;
-					await processNextNote();
-					return;
-				}
+		callbacks.onStatus('Clustering...');
 
-				totalInferenceTime += data.inferenceTime;
+		if (noteVectors.length < 3) {
+			callbacks.onError('Too few notes for clustering (need at least 3).');
+			return;
+		}
 
-				if (isEmbeddingTitle) {
-					const titleEmbedding = data.embedding;
+		const vectors = noteVectors.map((nv) => nv.vector);
+		const results = benchmark(vectors, DEFAULT_CONFIG);
 
-					if (currentBodyVector.length > 0) {
-						const sim = cosineSimilarity(currentBodyVector, titleEmbedding);
-						const alpha = computeTitleWeight(sim);
-						const finalVector = blendVectors(currentBodyVector, titleEmbedding, alpha);
-						await finalizeNote(finalVector, alpha, currentNoteHash);
-					} else {
-						await finalizeNote(titleEmbedding, 1.0, currentNoteHash);
-					}
-				} else {
-					currentChunkEmbeddings.push(data.embedding);
-					log(
-						`[${currentNoteIndex + 1}/${notes.length}] embedded chunk ${currentChunkIndex + 1}/${currentNoteChunks.length} of "${note.title.slice(0, 30)}"`,
-					);
+		// Post-process to extract tags/keywords for each cluster
+		const notesMap = new Map(notes.map((n) => [n.id, n]));
+		const allPipelineDocuments = noteVectors.map((nv) => {
+			const originalNote = notesMap.get(nv.noteId);
+			return {
+				title: nv.title,
+				body: originalNote ? originalNote.body : '',
+			};
+		});
 
-					currentChunkIndex++;
-					if (currentChunkIndex < currentNoteChunks.length) {
-						worker.postMessage({
-							type: 'embed',
-							text: currentNoteChunks[currentChunkIndex],
-							noteId: note.id,
-						});
-					} else {
-						currentBodyVector = averageVectors(currentChunkEmbeddings);
+		enrichResultsWithTags(results, allPipelineDocuments);
 
-						if (!isGenericTitle(note.title)) {
-							isEmbeddingTitle = true;
-							worker.postMessage({ type: 'embed', text: note.title, noteId: note.id });
-						} else {
-							await finalizeNote(currentBodyVector, 0, currentNoteHash);
-						}
-					}
-				}
-			}
-		};
+		const panelNotes: PanelNote[] = noteVectors.map((nv) => ({
+			noteId: nv.noteId,
+			title: nv.title,
+		}));
 
-		worker.postMessage({ type: 'load' });
+		callbacks.onComplete(results, panelNotes);
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
 		logErr('Pipeline failed:', message);

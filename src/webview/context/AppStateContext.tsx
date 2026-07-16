@@ -1,5 +1,8 @@
 import * as React from 'react';
 import { PanelNote, BenchmarkResult, ProgressState, ApplyOptions } from '../../types/panel';
+import { useSettingsState } from './useSettingsState';
+import { useApplyState } from './useApplyState';
+import { usePipelineState } from './usePipelineState';
 
 const POLL_INTERVAL_MS = 500;
 
@@ -55,42 +58,6 @@ interface AppStateContextType {
 const AppStateContext = React.createContext<AppStateContextType | undefined>(undefined);
 
 export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-	const [isRunning, setIsRunning] = React.useState(false);
-	const [statusText, setStatusText] = React.useState('');
-	const [progress, setProgress] = React.useState<ProgressState>({
-		current: 0,
-		total: 0,
-		cached: 0,
-		skipped: 0,
-	});
-	const [error, setError] = React.useState<string | null>(null);
-	const [strategies, setStrategies] = React.useState<BenchmarkResult[]>([]);
-	const [notes, setNotes] = React.useState<PanelNote[]>([]);
-	const [selectedStrategyIndex, setSelectedStrategyIndex] = React.useState<number>(0);
-	const [activeView, setActiveView] = React.useState<ViewType>('idle');
-
-	const [isApplying, setIsApplying] = React.useState(false);
-	const [applyProgress, setApplyProgress] = React.useState({ current: 0, total: 0 });
-	const [applyError, setApplyError] = React.useState<string | null>(null);
-	const [applySuccess, setApplySuccess] = React.useState(false);
-
-	const [isUndoing, setIsUndoing] = React.useState(false);
-	const [undoProgress, setUndoProgress] = React.useState({ current: 0, total: 0 });
-	const [undoError, setUndoError] = React.useState<string | null>(null);
-	const [undoSuccess, setUndoSuccess] = React.useState(false);
-
-	const [isCleaningUp, setIsCleaningUp] = React.useState(false);
-	const [cleanupError, setCleanupError] = React.useState<string | null>(null);
-	const [cleanupSuccess, setCleanupSuccess] = React.useState<string | null>(null);
-
-	const [settings, setSettings] = React.useState({
-		metric: 'cosine',
-		parentNotebook: '',
-		changeLog: '',
-	});
-
-	const hasChangeLog = !!settings.changeLog;
-
 	const pollIntervalRef = React.useRef<any>(null);
 
 	const stopPolling = React.useCallback(() => {
@@ -100,20 +67,64 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 		}
 	}, []);
 
-	const fetchSettings = React.useCallback(async () => {
-		try {
-			const res = await webviewApi.postMessage({ type: 'getSettings' });
-			if (res) {
-				setSettings({
-					metric: (res as any)['categorization.metric'] || 'cosine',
-					parentNotebook: (res as any)['categorization.parentNotebook'] || '',
-					changeLog: (res as any)['categorization.changeLog'] || '',
-				});
-			}
-		} catch (err) {
-			console.error('Failed to fetch settings:', err);
-		}
-	}, []);
+	// Initialize settings hook
+	const { settings, hasChangeLog, fetchSettings, updateSetting } = useSettingsState();
+
+	// Initialize apply state hook
+	const {
+		isApplying,
+		applyProgress,
+		applyError,
+		applySuccess,
+		isUndoing,
+		undoProgress,
+		undoError,
+		undoSuccess,
+		isCleaningUp,
+		cleanupError,
+		cleanupSuccess,
+		resetApplyState,
+		applyChanges,
+		undoChanges,
+		cleanUpNotebooks,
+		setIsApplying,
+		setApplyProgress,
+		setApplyError,
+		setApplySuccess,
+		setIsUndoing,
+		setUndoProgress,
+		setUndoError,
+		setUndoSuccess,
+		setIsCleaningUp,
+		setCleanupError,
+		setCleanupSuccess,
+	} = useApplyState(() => startPolling());
+
+	// Initialize pipeline state hook
+	const {
+		isRunning,
+		statusText,
+		progress,
+		error,
+		strategies,
+		notes,
+		selectedStrategyIndex,
+		activeView,
+		runPipeline,
+		changeStrategy,
+		setView,
+		updateClusterName,
+		moveNoteToCluster,
+		addCluster,
+		setIsRunning,
+		setStatusText,
+		setProgress,
+		setStrategies,
+		setNotes,
+		setSelectedStrategyIndex,
+		setError,
+		setActiveView,
+	} = usePipelineState(() => startPolling(), resetApplyState);
 
 	const handlePollResponse = React.useCallback(
 		(msg: any) => {
@@ -227,7 +238,29 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 					break;
 			}
 		},
-		[stopPolling, fetchSettings],
+		[
+			stopPolling,
+			fetchSettings,
+			setStatusText,
+			setProgress,
+			setStrategies,
+			setNotes,
+			setSelectedStrategyIndex,
+			setError,
+			setActiveView,
+			setIsRunning,
+			setIsApplying,
+			setApplyProgress,
+			setApplyError,
+			setApplySuccess,
+			setIsUndoing,
+			setUndoProgress,
+			setUndoError,
+			setUndoSuccess,
+			setIsCleaningUp,
+			setCleanupError,
+			setCleanupSuccess,
+		],
 	);
 
 	const startPolling = React.useCallback(() => {
@@ -250,194 +283,9 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 		};
 	}, [stopPolling]);
 
-	const runPipeline = async () => {
-		setIsRunning(true);
-		setStatusText('Starting pipeline...');
-		setProgress({ current: 0, total: 0, cached: 0, skipped: 0 });
-		setStrategies([]);
-		setNotes([]);
-		setError(null);
-		setActiveView('idle');
-		setApplySuccess(false);
-		setApplyError(null);
-		setUndoSuccess(false);
-		setUndoError(null);
-		setCleanupSuccess(null);
-		setCleanupError(null);
-		try {
-			await webviewApi.postMessage({ type: 'run' });
-		} catch (err) {
-			setError('Failed to start pipeline: ' + String(err));
-			setIsRunning(false);
-			return;
-		}
-		startPolling();
-	};
-
-	const changeStrategy = (index: number) => {
-		setSelectedStrategyIndex(index);
-	};
-
-	const setView = (view: ViewType) => {
-		setActiveView(view);
-	};
-
-	const updateClusterName = (clusterId: number, newName: string) => {
-		setStrategies((prev) => {
-			const next = [...prev];
-			if (next[selectedStrategyIndex]) {
-				const strat = { ...next[selectedStrategyIndex] };
-				const newClusterNames = { ...strat.clusterNames };
-				newClusterNames[clusterId] = newName;
-				strat.clusterNames = newClusterNames;
-				next[selectedStrategyIndex] = strat;
-			}
-			return next;
-		});
-	};
-
-	const moveNoteToCluster = (noteIndex: number, targetClusterId: number) => {
-		setStrategies((prev) => {
-			const next = [...prev];
-			if (next[selectedStrategyIndex]) {
-				const strat = { ...next[selectedStrategyIndex] };
-				const newAssignments = [...strat.assignments];
-
-				if (noteIndex < 0 || noteIndex >= newAssignments.length) return prev;
-				if (newAssignments[noteIndex] === targetClusterId) return prev;
-
-				newAssignments[noteIndex] = targetClusterId;
-				strat.assignments = newAssignments;
-				next[selectedStrategyIndex] = strat;
-			}
-			return next;
-		});
-	};
-
-	const addCluster = (name: string): boolean => {
-		const trimmedName = name.trim();
-		if (!trimmedName) return false;
-
+	const handleApplyChanges = async (options: ApplyOptions) => {
 		const currentStrategy = strategies[selectedStrategyIndex];
-		if (!currentStrategy) return false;
-
-		const clusterNames = currentStrategy.clusterNames || {};
-		const nameExists = Object.values(clusterNames).some((n) => n.toLowerCase() === trimmedName.toLowerCase());
-
-		if (nameExists) {
-			return false;
-		}
-
-		setStrategies((prev) => {
-			const next = [...prev];
-			const strat = next[selectedStrategyIndex];
-			if (strat) {
-				const newStrat = { ...strat };
-				const newClusterNames = { ...strat.clusterNames };
-				const newTags = { ...strat.tags };
-
-				const clusterIds = Object.keys(newClusterNames).map(Number);
-				const newClusterId = clusterIds.length > 0 ? Math.max(...clusterIds) + 1 : 0;
-
-				newClusterNames[newClusterId] = trimmedName;
-				newTags[newClusterId] = [];
-
-				newStrat.clusterNames = newClusterNames;
-				newStrat.tags = newTags;
-				newStrat.clusterCount = (newStrat.clusterCount || 0) + 1;
-
-				next[selectedStrategyIndex] = newStrat;
-			}
-			return next;
-		});
-
-		return true;
-	};
-
-	const updateSetting = async (key: string, value: any) => {
-		try {
-			await webviewApi.postMessage({
-				type: 'updateSetting',
-				key,
-				value,
-			});
-			const localKey = key.replace('categorization.', '');
-			setSettings((prev) => ({
-				...prev,
-				[localKey]: value,
-			}));
-		} catch (err) {
-			console.error('Failed to update setting:', err);
-		}
-	};
-
-	const applyChanges = async (options: ApplyOptions) => {
-		const currentStrategy = strategies[selectedStrategyIndex];
-		if (!currentStrategy) {
-			setApplyError('No active strategy selected.');
-			return;
-		}
-
-		setIsApplying(true);
-		setApplyProgress({ current: 0, total: notes.length });
-		setApplyError(null);
-		setApplySuccess(false);
-		setUndoSuccess(false);
-		setUndoError(null);
-		setCleanupSuccess(null);
-		setCleanupError(null);
-
-		try {
-			await webviewApi.postMessage({
-				type: 'apply',
-				options,
-				notes,
-				assignments: currentStrategy.assignments,
-				clusterNames: currentStrategy.clusterNames || {},
-				clusterTags: currentStrategy.tags || {},
-			});
-			startPolling();
-		} catch (err) {
-			setApplyError('Failed to apply changes: ' + String(err));
-			setIsApplying(false);
-		}
-	};
-
-	const undoChanges = async () => {
-		setIsUndoing(true);
-		setUndoProgress({ current: 0, total: 0 });
-		setUndoError(null);
-		setUndoSuccess(false);
-		setApplySuccess(false);
-		setApplyError(null);
-		setCleanupSuccess(null);
-		setCleanupError(null);
-
-		try {
-			await webviewApi.postMessage({ type: 'undo' });
-			startPolling();
-		} catch (err) {
-			setUndoError('Failed to start undo operation: ' + String(err));
-			setIsUndoing(false);
-		}
-	};
-
-	const cleanUpNotebooks = async () => {
-		setIsCleaningUp(true);
-		setCleanupError(null);
-		setCleanupSuccess(null);
-		setApplySuccess(false);
-		setApplyError(null);
-		setUndoSuccess(false);
-		setUndoError(null);
-
-		try {
-			await webviewApi.postMessage({ type: 'cleanUpEmptyNotebooks' });
-			startPolling();
-		} catch (err) {
-			setCleanupError('Failed to start cleanup: ' + String(err));
-			setIsCleaningUp(false);
-		}
+		await applyChanges(options, notes, currentStrategy);
 	};
 
 	return (
@@ -464,7 +312,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 				applyProgress,
 				applyError,
 				applySuccess,
-				applyChanges,
+				applyChanges: handleApplyChanges,
 				isUndoing,
 				undoProgress,
 				undoError,
