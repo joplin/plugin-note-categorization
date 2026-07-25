@@ -7,6 +7,7 @@ import { VectorCache } from './vectorCache';
 import { isNativeAiReady, fetchNativeEmbeddings } from './nativeEmbeddingPipeline';
 import { DEFAULT_CONFIG, isValidEmbeddingVector } from './pipelineConfig';
 import { enrichResultsWithTags } from './clustering/postProcess';
+import { upgradeClusterNamesWithAi } from './clustering/aiNamingService';
 import { EmbeddingWorkerOrchestrator } from './EmbeddingWorkerOrchestrator';
 
 export interface PipelineCallbacks {
@@ -89,6 +90,9 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 
 					enrichResultsWithTags(results, allPipelineDocuments);
 
+					callbacks.onStatus('Generating AI cluster names...');
+					await upgradeClusterNamesWithAi(results, allPipelineDocuments);
+
 					const panelNotes: PanelNote[] = validNotes.map((n) => ({
 						noteId: n.id,
 						title: n.title,
@@ -163,6 +167,9 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 		});
 
 		enrichResultsWithTags(results, allPipelineDocuments);
+
+		callbacks.onStatus('Generating AI cluster names...');
+		await upgradeClusterNamesWithAi(results, allPipelineDocuments);
 
 		const panelNotes: PanelNote[] = noteVectors.map((nv) => ({
 			noteId: nv.noteId,
