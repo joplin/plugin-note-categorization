@@ -170,7 +170,6 @@ joplin.plugins.register({
 			ToolbarButtonLocation.NoteToolbar,
 		);
 
-		log('Test command registered under Tools menu');
 		log('Panel registered');
 	},
 });

@@ -10,7 +10,7 @@ export const SettingsPage: React.FC = () => {
 			<div className="config-card">
 				<div className="config-card-header">Default Configuration:</div>
 				<div className="config-card-item">
-					• <strong>Model:</strong> ONNX BGE-Micro-v2
+					• <strong>Model:</strong> Xenova/all-MiniLM-L6-v2 (384-dim)
 				</div>
 				<div className="config-card-item">
 					• <strong>Metric:</strong> Cosine Similarity
