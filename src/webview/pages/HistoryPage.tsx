@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useAppState } from '../context/AppStateContext';
+import type { ChangeLogEntry } from '../../commands/applyChanges';
 
 export const HistoryPage: React.FC = () => {
 	const {
@@ -16,7 +17,7 @@ export const HistoryPage: React.FC = () => {
 		cleanUpNotebooks,
 	} = useAppState();
 
-	let logDetails: any = null;
+	let logDetails: ChangeLogEntry | null = null;
 	if (hasChangeLog && settings.changeLog) {
 		try {
 			logDetails = JSON.parse(settings.changeLog);

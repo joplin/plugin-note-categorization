@@ -1,8 +1,14 @@
 import joplin from 'api';
 import { log } from '../utils/logger';
 
+interface JoplinFolder {
+	id: string;
+	title: string;
+	parent_id: string;
+}
+
 export async function fetchExistingFolders(): Promise<Map<string, string>> {
-	const allFoldersList: any[] = [];
+	const allFoldersList: JoplinFolder[] = [];
 	let folderPage = 1;
 	const MAX_PAGES = 500;
 	while (folderPage <= MAX_PAGES) {
@@ -16,7 +22,7 @@ export async function fetchExistingFolders(): Promise<Map<string, string>> {
 		folderPage++;
 	}
 	return new Map<string, string>(
-		allFoldersList.map((f: any) => [`${f.title.toLowerCase()}\x1F${f.parent_id || ''}`, f.id]),
+		allFoldersList.map((f) => [`${f.title.toLowerCase()}\x1F${f.parent_id || ''}`, f.id]),
 	);
 }
 
@@ -104,7 +110,7 @@ export async function restoreNotebook(noteId: string, originalParentId: string) 
 
 export async function deleteCreatedFolders(createdFolderIds: string[]) {
 	// Fetch all folders once to check for subfolders in memory
-	const undoAllFolders: any[] = [];
+	const undoAllFolders: JoplinFolder[] = [];
 	let undoPage = 1;
 	const MAX_PAGES = 500;
 	while (undoPage <= MAX_PAGES) {
@@ -117,7 +123,7 @@ export async function deleteCreatedFolders(createdFolderIds: string[]) {
 		if (!res.has_more) break;
 		undoPage++;
 	}
-	const undoParentIds = new Set<string>(undoAllFolders.map((f: any) => f.parent_id).filter((pid) => !!pid));
+	const undoParentIds = new Set<string>(undoAllFolders.map((f) => f.parent_id).filter((pid) => !!pid));
 
 	for (const folderId of createdFolderIds) {
 		try {
@@ -143,7 +149,7 @@ export async function cleanUpFolders(originalParentIds: Set<string>): Promise<nu
 	let deletedCount = 0;
 
 	// Fetch all folders once to map parent-child relationships in memory
-	const allFolders: any[] = [];
+	const allFolders: JoplinFolder[] = [];
 	let page = 1;
 	const MAX_PAGES = 500;
 	while (page <= MAX_PAGES) {
@@ -152,7 +158,7 @@ export async function cleanUpFolders(originalParentIds: Set<string>): Promise<nu
 		if (!res.has_more) break;
 		page++;
 	}
-	const parentFolderIds = new Set<string>(allFolders.map((f: any) => f.parent_id).filter((pid) => !!pid));
+	const parentFolderIds = new Set<string>(allFolders.map((f) => f.parent_id).filter((pid) => !!pid));
 
 	for (const folderId of originalParentIds) {
 		try {

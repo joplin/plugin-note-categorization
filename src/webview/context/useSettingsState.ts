@@ -1,5 +1,11 @@
 import * as React from 'react';
 
+interface SettingsResponse {
+	'categorization.metric': string;
+	'categorization.parentNotebook': string;
+	'categorization.changeLog': string;
+}
+
 export function useSettingsState() {
 	const [settings, setSettings] = React.useState({
 		metric: 'cosine',
@@ -11,10 +17,11 @@ export function useSettingsState() {
 		try {
 			const res = await webviewApi.postMessage({ type: 'getSettings' });
 			if (res) {
+				const data = res as unknown as SettingsResponse;
 				setSettings({
-					metric: (res as any)['categorization.metric'] || 'cosine',
-					parentNotebook: (res as any)['categorization.parentNotebook'] || '',
-					changeLog: (res as any)['categorization.changeLog'] || '',
+					metric: data['categorization.metric'] || 'cosine',
+					parentNotebook: data['categorization.parentNotebook'] || '',
+					changeLog: data['categorization.changeLog'] || '',
 				});
 			}
 		} catch (err) {
@@ -22,7 +29,7 @@ export function useSettingsState() {
 		}
 	}, []);
 
-	const updateSetting = React.useCallback(async (key: string, value: any) => {
+	const updateSetting = React.useCallback(async (key: string, value: string) => {
 		try {
 			await webviewApi.postMessage({
 				type: 'updateSetting',

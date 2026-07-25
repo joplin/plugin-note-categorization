@@ -1,5 +1,10 @@
 import joplin from 'api';
 import { log } from '../utils/logger';
+import { JoplinAi } from '../types/joplinAi';
+
+// The Joplin AI API is experimental and not in the official type declarations.
+// We access it via a typed cast to maintain type safety.
+const joplinAi = (joplin as unknown as { ai: JoplinAi }).ai;
 
 export interface NativeEmbeddingChunk {
 	noteId: string;
@@ -13,12 +18,12 @@ export interface NativeEmbeddingChunk {
  */
 export const isNativeAiReady = async (): Promise<boolean> => {
 	try {
-		const status = await (joplin as any).ai.getIndexStatus();
+		const status = await joplinAi.getIndexStatus();
 		const ready = !!(status && status.ready);
 		log(`Native AI check - state: ${status?.state}, ready: ${ready}, modelId: ${status?.modelId}`);
 		return ready;
-	} catch (err: any) {
-		log('Native AI check failed:', err.message);
+	} catch (err) {
+		log('Native AI check failed:', err instanceof Error ? err.message : String(err));
 		return false;
 	}
 };
@@ -40,7 +45,7 @@ export const fetchNativeEmbeddings = async (noteIds: string[]): Promise<NativeEm
 		const seenCursors = new Set<string>();
 
 		do {
-			const page = await (joplin as any).ai.getEmbeddings({
+			const page = await joplinAi.getEmbeddings({
 				noteIds: batchIds,
 				cursor,
 				limit: 1000,

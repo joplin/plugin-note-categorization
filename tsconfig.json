@@ -6,6 +6,9 @@
 		"jsx": "react",
 		"allowJs": true,
 		"baseUrl": ".",
-		"skipLibCheck": true
+		"skipLibCheck": true,
+		"strict": true,
+		"noEmit": true
 	}
 }
+

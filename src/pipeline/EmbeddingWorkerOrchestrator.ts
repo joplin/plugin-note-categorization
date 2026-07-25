@@ -1,5 +1,6 @@
 import { getEncoding } from 'js-tiktoken';
 import { NoteVector, WorkerMessage } from '../types/embed';
+import { NoteItem } from './noteReader';
 import { VectorCache } from './vectorCache';
 import { isGenericTitle } from '../utils/titleFilter';
 import { log, logErr } from '../utils/logger';
@@ -35,11 +36,12 @@ export class EmbeddingWorkerOrchestrator {
 	private noteVectors: NoteVector[] = [];
 	private worker: Worker | null = null;
 	private resolvePromise: ((value: EmbeddingResult) => void) | null = null;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private rejectPromise: ((reason: any) => void) | null = null;
 
 	constructor(
 		private installDir: string,
-		private notes: any[],
+		private notes: NoteItem[],
 		private cache: VectorCache,
 		private callbacks: OrchestratorCallbacks,
 	) {}

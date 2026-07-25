@@ -97,8 +97,8 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 					callbacks.onComplete(results, panelNotes);
 					return;
 				}
-			} catch (err: any) {
-				logErr('Failed to run native embeddings pipeline:', err.message);
+			} catch (err) {
+				logErr('Failed to run native embeddings pipeline:', err instanceof Error ? err.message : String(err));
 			}
 		}
 
