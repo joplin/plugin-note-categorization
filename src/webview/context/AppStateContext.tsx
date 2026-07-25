@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { PanelNote, BenchmarkResult, ProgressState, ApplyOptions } from '../../types/panel';
+import { PanelNote, BenchmarkResult, ProgressState, ApplyOptions, PanelMessage } from '../../types/panel';
 import { useSettingsState } from './useSettingsState';
 import { useApplyState } from './useApplyState';
 import { usePipelineState } from './usePipelineState';
@@ -30,7 +30,7 @@ interface AppStateContextType {
 		parentNotebook: string;
 		changeLog: string;
 	};
-	updateSetting: (key: string, value: any) => Promise<void>;
+	updateSetting: (key: string, value: string) => Promise<void>;
 	fetchSettings: () => Promise<void>;
 
 	// apply states
@@ -58,7 +58,7 @@ interface AppStateContextType {
 const AppStateContext = React.createContext<AppStateContextType | undefined>(undefined);
 
 export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-	const pollIntervalRef = React.useRef<any>(null);
+	const pollIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
 	const stopPolling = React.useCallback(() => {
 		if (pollIntervalRef.current) {
@@ -127,7 +127,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 	} = usePipelineState(() => startPolling(), resetApplyState);
 
 	const handlePollResponse = React.useCallback(
-		(msg: any) => {
+		(msg: PanelMessage | { type: 'idle' }) => {
 			if (!msg || !msg.type) return;
 
 			switch (msg.type) {
@@ -150,7 +150,8 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 					setStrategies(msg.strategies || []);
 					setNotes(msg.notes || []);
 					const nonTestingIdx = (msg.strategies || []).findIndex(
-						(s: any) => !s.strategyName.startsWith('kmeans') && !s.strategyName.startsWith('kmedoids'),
+						(s: BenchmarkResult) =>
+							!s.strategyName.startsWith('kmeans') && !s.strategyName.startsWith('kmedoids'),
 					);
 					setSelectedStrategyIndex(nonTestingIdx !== -1 ? nonTestingIdx : 0);
 					setError(null);

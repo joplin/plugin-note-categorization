@@ -19,7 +19,7 @@ export const fetchAllNotes = async (): Promise<NoteItem[]> => {
 			page: folderPage,
 			limit: 50,
 		});
-		result.items.forEach((f: any) => activeFolderIds.add(f.id));
+		result.items.forEach((f: { id: string }) => activeFolderIds.add(f.id));
 		if (!result.has_more) break;
 		folderPage++;
 	}

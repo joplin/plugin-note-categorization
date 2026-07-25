@@ -168,11 +168,11 @@ export async function applyCategorizationChanges(
 		await joplin.settings.setValue('categorization.changeLog', JSON.stringify(changeLogEntry));
 
 		setPanelState({ type: 'apply_complete' });
-	} catch (err: any) {
+	} catch (err) {
 		log('Error in applyCategorizationChanges: ' + err);
 		setPanelState({
 			type: 'apply_error',
-			message: err.message || String(err),
+			message: err instanceof Error ? err.message : String(err),
 		});
 	}
 }
@@ -231,11 +231,11 @@ export async function undoCategorizationChanges(setPanelState: (state: PanelMess
 		await joplin.settings.setValue('categorization.changeLog', '');
 
 		setPanelState({ type: 'undo_complete' });
-	} catch (err: any) {
+	} catch (err) {
 		log('Error in undoCategorizationChanges: ' + err);
 		setPanelState({
 			type: 'undo_error',
-			message: err.message || String(err),
+			message: err instanceof Error ? err.message : String(err),
 		});
 	}
 }
@@ -269,11 +269,11 @@ export async function cleanUpEmptyNotebooks(setPanelState: (state: PanelMessage)
 			type: 'cleanup_complete',
 			message: `Cleaned up ${deletedCount} empty original notebook(s) successfully!`,
 		});
-	} catch (err: any) {
+	} catch (err) {
 		log('Error in cleanUpEmptyNotebooks: ' + err);
 		setPanelState({
 			type: 'cleanup_error',
-			message: err.message || String(err),
+			message: err instanceof Error ? err.message : String(err),
 		});
 	}
 }

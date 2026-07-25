@@ -2,6 +2,11 @@ import joplin from 'api';
 import { PanelNote } from '../types/panel';
 import { log } from '../utils/logger';
 
+interface JoplinTag {
+	id: string;
+	title: string;
+}
+
 function matchesKeyword(title: string, body: string, keyword: string): boolean {
 	const lowerKeyword = keyword.toLowerCase();
 	const lowerTitle = title.toLowerCase();
@@ -18,7 +23,7 @@ function matchesKeyword(title: string, body: string, keyword: string): boolean {
 }
 
 export async function fetchExistingTags(): Promise<Map<string, string>> {
-	const allTags: any[] = [];
+	const allTags: JoplinTag[] = [];
 	let tagPage = 1;
 	const MAX_PAGES = 500;
 	while (tagPage <= MAX_PAGES) {
@@ -27,7 +32,7 @@ export async function fetchExistingTags(): Promise<Map<string, string>> {
 		if (!res.has_more) break;
 		tagPage++;
 	}
-	return new Map<string, string>(allTags.map((t: any) => [t.title.toLowerCase(), t.id]));
+	return new Map<string, string>(allTags.map((t) => [t.title.toLowerCase(), t.id]));
 }
 
 export async function getOrCreateTag(

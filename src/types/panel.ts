@@ -52,7 +52,7 @@ export type WebviewMessage =
 	| { type: 'poll' }
 	| { type: 'openNote'; noteId: string }
 	| { type: 'getSettings' }
-	| { type: 'updateSetting'; key: string; value: any }
+	| { type: 'updateSetting'; key: string; value: string }
 	| ApplyMessage
 	| { type: 'undo' }
 	| { type: 'cleanUpEmptyNotebooks' };

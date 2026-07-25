@@ -13,9 +13,10 @@ const POOLING = 'mean' as const;
 // Worker compiles to dist/worker/, WASM files are at dist/onnx-dist/
 env.backends.onnx.wasm!.wasmPaths = '../onnx-dist/';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let embedder: any = null;
-let selectedDevice: any = 'wasm';
-let selectedDtype: any = 'q8';
+let selectedDevice: 'wasm' | 'webgpu' = 'wasm';
+let selectedDtype: 'q8' | 'fp16' = 'q8';
 
 const loadWasmFallback = async () => {
 	selectedDevice = 'wasm';
@@ -95,7 +96,7 @@ const embed = async (text: string): Promise<{ inferenceTime: number; dimensions:
 
 		const embedding = Array.from(data);
 		return { inferenceTime, dimensions, embedding };
-	} catch (e: any) {
+	} catch (e) {
 		if (selectedDevice === 'webgpu') {
 			console.warn('WebGPU inference failed or returned NaN. Falling back to WASM/q8 dynamically...', e);
 			await loadWasmFallback();
@@ -113,7 +114,7 @@ self.addEventListener('message', async (event) => {
 		try {
 			const result = await loadModel();
 			postMessage({ type: 'load-result', success: true, ...result });
-		} catch (e: any) {
+		} catch (e) {
 			postMessage({ type: 'load-result', success: false, error: String(e) });
 		}
 	}
@@ -127,7 +128,7 @@ self.addEventListener('message', async (event) => {
 				success: true,
 				...result,
 			});
-		} catch (e: any) {
+		} catch (e) {
 			postMessage({
 				type: 'embed-result',
 				noteId: event.data.noteId,
