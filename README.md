@@ -3,7 +3,7 @@
 An on-device AI plugin for Joplin that semantically clusters notes, suggests tags and notebook structures, and detects stale/archivable notes.
 
 > [!NOTE]
-> This plugin is under active development as part of GSoC 2026. The initial embedding pipeline is implemented; clustering and UI panels are upcoming features.
+> This plugin is under active development as part of GSoC 2026. The embedding pipeline, clustering (K-Means, K-Medoids, HDBSCAN), and an interactive UI panel are implemented. Settings customization and staleness analysis are upcoming features.
 
 ---
 
@@ -24,6 +24,16 @@ The plugin implements a background-threaded embedding pipeline:
 * **Hybrid Device Execution**:
   * **Windows & macOS**: Automatically detects WebGPU support (`navigator.gpu`) and executes the model in **`fp16`** precision (at ~43ms per note).
   * **Linux (Fallback)**: Defaults to running on the CPU using WebAssembly (**`q8`** quantized precision, running ~2x faster than the standard `fp32` CPU baseline).
+
+## Current Features
+
+- **Embedding Pipeline**: On-device embedding generation with WebGPU acceleration and WASM fallback
+- **Native AI Integration**: Automatically uses Joplin's built-in AI Search embeddings when available
+- **Multi-Strategy Clustering**: Compare K-Means, K-Medoids, and HDBSCAN results side-by-side
+- **Interactive Panel**: Drag-and-drop notes between clusters, rename clusters, add custom categories
+- **Apply Categorization**: Organize notes into notebooks and/or tags based on clustering results
+- **Undo Support**: Revert any applied categorization with full change tracking
+- **Empty Notebook Cleanup**: Remove empty notebooks left after reorganization
 
 ---
 
@@ -54,4 +64,5 @@ This script does the following:
 1. Open Joplin.
 2. Go to **Settings -> Plugins -> Manage Plugins -> Install from File** and select the `.jpl` package generated in `publish/`.
 3. Restart Joplin.
-4. Run the debug test from **Tools -> AI Categorise: Test Embedding**. This will index your local notes, run the tokenizer chunking, and output performance metrics directly to your developer tools console.
+4. Open the categorization panel from **View -> AI Categorise: Toggle Panel** (or click the brain icon on the note toolbar).
+5. Click **Analyse Notes** to run the full pipeline: notes are embedded, clustered, and results are displayed in the panel.
