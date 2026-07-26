@@ -1,5 +1,7 @@
 import {
 	averageVectors,
+	weightedAverageVectors,
+	weightedAverageVectorsWithNorm,
 	cosineSimilarity,
 	computeTitleWeight,
 	blendVectors,
@@ -50,6 +52,67 @@ describe('averageVectors', () => {
 				[1, 2, 3],
 			]),
 		).toThrow('different dimensions');
+	});
+});
+
+describe('weightedAverageVectors', () => {
+	it('normalizes a single vector', () => {
+		const result = weightedAverageVectors([[3, 4]]);
+		expect(result[0]).toBeCloseTo(0.6, 10);
+		expect(result[1]).toBeCloseTo(0.8, 10);
+	});
+
+	it('gives lead chunk (index 0) higher weight than tail chunks', () => {
+		const chunk0 = [1, 0];
+		const chunk1 = [0, 1];
+		const result = weightedAverageVectors([chunk0, chunk1]);
+
+		// Chunk 0 has weight = exp(0) + 0.5 = 1.5
+		// Chunk 1 has weight = exp(-0.15) ≈ 0.8607
+		// Therefore result[0] > result[1]
+		expect(result[0]).toBeGreaterThan(result[1]);
+	});
+
+	it('supports custom lambda and leadBoost parameters', () => {
+		const chunk0 = [1, 0];
+		const chunk1 = [0, 1];
+		const result = weightedAverageVectors([chunk0, chunk1], { lambda: 0.5, leadBoost: 1.0 });
+
+		// Chunk 0 weight = 2.0, Chunk 1 weight = exp(-0.5) ≈ 0.6065
+		expect(result[0]).toBeGreaterThan(result[1]);
+	});
+
+	it('throws on empty input', () => {
+		expect(() => weightedAverageVectors([])).toThrow('Cannot average zero vectors');
+	});
+
+	it('throws on dimension mismatch', () => {
+		expect(() =>
+			weightedAverageVectors([
+				[1, 2],
+				[1, 2, 3],
+			]),
+		).toThrow('different dimensions');
+	});
+});
+
+describe('weightedAverageVectorsWithNorm', () => {
+	it('returns both normalized vector and pre-normalization raw norm', () => {
+		const chunk0 = [0.6, 0.8];
+		const res = weightedAverageVectorsWithNorm([chunk0]);
+		expect(res.vector[0]).toBeCloseTo(0.6, 10);
+		expect(res.vector[1]).toBeCloseTo(0.8, 10);
+		expect(res.rawNorm).toBeCloseTo(1.0, 10);
+	});
+
+	it('detects near-zero raw norm when vectors cancel out', () => {
+		// Opposing unit vectors with equal weights
+		const chunk0 = [1, 0];
+		const chunk1 = [-1, 0];
+		// Weight chunk0 = 1.5, weight chunk1 = exp(-0.15) ≈ 0.8607
+		// If lambda=0 and leadBoost=0, weights are equal
+		const res = weightedAverageVectorsWithNorm([chunk0, chunk1], { lambda: 0, leadBoost: 0 });
+		expect(res.rawNorm).toBeCloseTo(0, 10);
 	});
 });
 
