@@ -9,7 +9,9 @@ export interface CacheMetadata {
 	hash: string;
 	updatedTime: number;
 	titleWeight: number;
-	[key: string]: MetadataTypes;
+	modelId?: string;
+	dimension?: number;
+	[key: string]: MetadataTypes | undefined;
 }
 
 export class VectorCache {
@@ -56,7 +58,9 @@ export class VectorCache {
 	 */
 	public async getItem(id: string) {
 		try {
-			return await this.index.getItem<CacheMetadata>(id);
+			const item = await this.index.getItem<Record<string, MetadataTypes>>(id);
+			if (!item) return undefined;
+			return item as unknown as { id: string; vector: number[]; metadata: CacheMetadata };
 		} catch (err) {
 			log('Error getting cached item:', err);
 			return undefined;
@@ -70,7 +74,7 @@ export class VectorCache {
 		return await this.index.upsertItem({
 			id,
 			vector,
-			metadata,
+			metadata: metadata as unknown as Record<string, MetadataTypes>,
 		});
 	}
 

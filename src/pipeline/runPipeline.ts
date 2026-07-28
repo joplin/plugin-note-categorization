@@ -1,12 +1,13 @@
 import { fetchAllNotes } from './noteReader';
 import { benchmark } from './clustering/benchmark';
-import { averageVectors } from './vectorAggregator';
+import { weightedAverageVectorsWithNorm } from './vectorAggregator';
 import { PanelNote } from '../types/panel';
 import { log, logErr } from '../utils/logger';
 import { VectorCache } from './vectorCache';
 import { isNativeAiReady, fetchNativeEmbeddings } from './nativeEmbeddingPipeline';
-import { DEFAULT_CONFIG, isValidEmbeddingVector } from './pipelineConfig';
+import { DEFAULT_CONFIG, isValidEmbeddingVector, createAdaptiveConfig } from './pipelineConfig';
 import { enrichResultsWithTags } from './clustering/postProcess';
+import { upgradeClusterNamesWithAi } from './clustering/aiNamingService';
 import { EmbeddingWorkerOrchestrator } from './EmbeddingWorkerOrchestrator';
 
 export interface PipelineCallbacks {
@@ -14,6 +15,11 @@ export interface PipelineCallbacks {
 	onProgress: (current: number, total: number, cached: number, skipped: number) => void;
 	onComplete: (strategies: import('../types/cluster').BenchmarkResult[], notes: PanelNote[]) => void;
 	onError: (message: string) => void;
+}
+
+interface IndexedVector {
+	chunkIndex: number;
+	vector: number[];
 }
 
 /**
@@ -44,13 +50,14 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 
 			try {
 				const noteIds = notes.map((n) => n.id);
-				const chunks = await fetchNativeEmbeddings(noteIds);
+				const nativeResult = await fetchNativeEmbeddings(noteIds);
+				log(`Native AI embeddings retrieved (model: ${nativeResult.modelId}, dim: ${nativeResult.dimension})`);
 
-				// Group chunks by noteId
-				const noteChunksMap = new Map<string, number[][]>();
-				for (const chunk of chunks) {
+				// Group chunks by noteId preserving chunkIndex for ordering
+				const noteChunksMap = new Map<string, IndexedVector[]>();
+				for (const chunk of nativeResult.chunks) {
 					const list = noteChunksMap.get(chunk.noteId) || [];
-					list.push(chunk.vector);
+					list.push({ chunkIndex: chunk.chunkIndex, vector: chunk.vector });
 					noteChunksMap.set(chunk.noteId, list);
 				}
 
@@ -58,11 +65,22 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 				const vectors: number[][] = [];
 
 				for (const note of notes) {
-					const chunkVectors = noteChunksMap.get(note.id);
-					if (chunkVectors && chunkVectors.length > 0) {
-						const avgVector = averageVectors(chunkVectors);
+					const chunkEntries = noteChunksMap.get(note.id);
+					if (chunkEntries && chunkEntries.length > 0) {
+						// Sort by chunkIndex ascending to ensure lead paragraph/header (chunk 0) gets highest weight
+						const sortedEntries = chunkEntries.sort((a, b) => a.chunkIndex - b.chunkIndex);
+						const chunkVectors = sortedEntries.map((e) => e.vector);
 
-						if (isValidEmbeddingVector(avgVector)) {
+						const { vector: avgVector, rawNorm } = weightedAverageVectorsWithNorm(chunkVectors);
+
+						if (rawNorm < 1e-6) {
+							logErr(
+								`Native embedding for note "${note.title}" has near-zero L2 norm (${rawNorm}). Skipping as outlier.`,
+							);
+							continue;
+						}
+
+						if (isValidEmbeddingVector(avgVector, nativeResult.dimension)) {
 							vectors.push(avgVector);
 							validNotes.push(note);
 						} else {
@@ -79,7 +97,8 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 					log('Too few indexed notes found in native DB. Falling back to local ONNX Web Worker.');
 				} else {
 					callbacks.onStatus('Clustering...');
-					const results = benchmark(vectors, DEFAULT_CONFIG);
+					const adaptiveConfig = createAdaptiveConfig(nativeResult.dimension, validNotes.length);
+					const results = benchmark(vectors, adaptiveConfig);
 
 					// Post-process to extract tags/keywords for each cluster (keep parity with local pipeline)
 					const allPipelineDocuments = validNotes.map((n) => ({
@@ -88,6 +107,9 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 					}));
 
 					enrichResultsWithTags(results, allPipelineDocuments);
+
+					callbacks.onStatus('Generating AI cluster names...');
+					await upgradeClusterNamesWithAi(results, allPipelineDocuments);
 
 					const panelNotes: PanelNote[] = validNotes.map((n) => ({
 						noteId: n.id,
@@ -163,6 +185,9 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 		});
 
 		enrichResultsWithTags(results, allPipelineDocuments);
+
+		callbacks.onStatus('Generating AI cluster names...');
+		await upgradeClusterNamesWithAi(results, allPipelineDocuments);
 
 		const panelNotes: PanelNote[] = noteVectors.map((nv) => ({
 			noteId: nv.noteId,

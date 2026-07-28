@@ -5,7 +5,7 @@ import { VectorCache } from './vectorCache';
 import { isGenericTitle } from '../utils/titleFilter';
 import { log, logErr } from '../utils/logger';
 import { averageVectors, blendVectors, computeTitleWeight, cosineSimilarity } from './vectorAggregator';
-import { isValidEmbeddingVector } from './pipelineConfig';
+import { EMBEDDING_DIM, isValidEmbeddingVector } from './pipelineConfig';
 
 const enc = getEncoding('cl100k_base');
 const MAX_TOKENS = 200;
@@ -171,6 +171,8 @@ export class EmbeddingWorkerOrchestrator {
 			hash,
 			updatedTime: note.updated_time,
 			titleWeight,
+			modelId: 'local-onnx',
+			dimension: EMBEDDING_DIM,
 		});
 
 		this.reportProgress();
@@ -204,7 +206,8 @@ export class EmbeddingWorkerOrchestrator {
 			const cachedItem = await this.cache.getItem(note.id);
 
 			if (cachedItem && cachedItem.metadata.hash === this.currentNoteHash) {
-				if (isValidEmbeddingVector(cachedItem.vector)) {
+				const isCorrectModel = !cachedItem.metadata.modelId || cachedItem.metadata.modelId === 'local-onnx';
+				if (isCorrectModel && isValidEmbeddingVector(cachedItem.vector, EMBEDDING_DIM)) {
 					log(
 						`[${this.currentNoteIndex + 1}/${this.notes.length}] cache hit for "${note.title.slice(0, 30)}"`,
 					);
@@ -220,7 +223,7 @@ export class EmbeddingWorkerOrchestrator {
 					continue;
 				} else {
 					log(
-						`[${this.currentNoteIndex + 1}/${this.notes.length}] cache invalid (contains null/NaN) for "${note.title.slice(0, 30)}"`,
+						`[${this.currentNoteIndex + 1}/${this.notes.length}] cache invalid (wrong dimension/model) for "${note.title.slice(0, 30)}"`,
 					);
 				}
 			}

@@ -7,7 +7,7 @@
 export interface AiIndexStatus {
 	state: string;
 	ready: boolean;
-	modelId?: string;
+	modelId: string | null;
 }
 
 export interface AiEmbeddingChunk {
@@ -20,6 +20,7 @@ export interface AiEmbeddingChunk {
 export interface AiEmbeddingsPage {
 	chunks: AiEmbeddingChunk[];
 	modelId: string;
+	dimension: number;
 	nextCursor?: string;
 }
 
@@ -29,7 +30,18 @@ export interface AiGetEmbeddingsOptions {
 	limit?: number;
 }
 
+export interface ChatMessage {
+	role: 'system' | 'user' | 'assistant';
+	content: string;
+}
+
+export interface ChatResult {
+	message?: ChatMessage;
+	text?: string;
+}
+
 export interface JoplinAi {
 	getIndexStatus(): Promise<AiIndexStatus>;
 	getEmbeddings(options: AiGetEmbeddingsOptions): Promise<AiEmbeddingsPage>;
+	chat(messages: ChatMessage[]): Promise<ChatResult>;
 }

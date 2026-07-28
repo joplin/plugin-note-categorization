@@ -28,6 +28,72 @@ export const averageVectors = (vectors: number[][]): number[] => {
 	return normalise(avg);
 };
 
+export interface WeightedPoolingOptions {
+	lambda?: number;
+	leadBoost?: number;
+}
+
+export interface WeightedAverageResult {
+	vector: number[];
+	rawNorm: number;
+}
+
+/**
+ * Element-wise weighted average of chunk vectors using exponential position decay
+ * with a lead-chunk boost, returning both the L2-normalised vector and the raw pre-normalisation norm.
+ *
+ * w_i = (leadBoost + exp(-lambda * i)) if i == 0 else exp(-lambda * i)
+ */
+export const weightedAverageVectorsWithNorm = (
+	vectors: number[][],
+	options: WeightedPoolingOptions = {},
+): WeightedAverageResult => {
+	if (vectors.length === 0) throw new Error('Cannot average zero vectors');
+	const dim = vectors[0].length;
+	for (const vec of vectors) {
+		if (vec.length !== dim) throw new Error('Cannot average vectors of different dimensions');
+	}
+	if (vectors.length === 1) {
+		const rawNorm = Math.sqrt(vectors[0].reduce((sum, v) => sum + v * v, 0));
+		const vector = rawNorm === 0 ? vectors[0] : vectors[0].map((v) => v / rawNorm);
+		return { vector, rawNorm };
+	}
+
+	const lambda = options.lambda ?? 0.15;
+	const leadBoost = options.leadBoost ?? 0.5;
+
+	const weights: number[] = new Array(vectors.length);
+	let weightSum = 0;
+
+	for (let i = 0; i < vectors.length; i++) {
+		const w = Math.exp(-lambda * i) + (i === 0 ? leadBoost : 0);
+		weights[i] = w;
+		weightSum += w;
+	}
+
+	const weightedSum = new Array<number>(dim).fill(0);
+	for (let i = 0; i < vectors.length; i++) {
+		const normW = weights[i] / weightSum;
+		const vec = vectors[i];
+		for (let d = 0; d < dim; d++) {
+			weightedSum[d] += normW * vec[d];
+		}
+	}
+
+	const rawNorm = Math.sqrt(weightedSum.reduce((sum, v) => sum + v * v, 0));
+	const vector = rawNorm === 0 ? weightedSum : weightedSum.map((v) => v / rawNorm);
+
+	return { vector, rawNorm };
+};
+
+/**
+ * Element-wise weighted average of chunk vectors using exponential position decay
+ * with a lead-chunk boost, then L2-normalised.
+ */
+export const weightedAverageVectors = (vectors: number[][], options: WeightedPoolingOptions = {}): number[] => {
+	return weightedAverageVectorsWithNorm(vectors, options).vector;
+};
+
 /**
  * Cosine similarity between two L2-normalised vectors (= dot product).
  */
