@@ -1,12 +1,46 @@
 import { CategorizationConfig } from '../types/cluster';
 
-/** Dimensionality of embedding vectors (all-MiniLM-L6-v2 / multilingual-e5-small). */
+/** Default dimensionality of local ONNX embedding vectors (all-MiniLM-L6-v2 / multilingual-e5-small). */
 export const EMBEDDING_DIM = 384;
 
-export function isValidEmbeddingVector(vector: number[] | undefined | null): boolean {
-	if (!vector) return false;
-	if (vector.length !== EMBEDDING_DIM) return false;
+export function isValidEmbeddingVector(vector: number[] | undefined | null, expectedDim?: number): boolean {
+	if (!vector || vector.length === 0) return false;
+	if (expectedDim !== undefined && vector.length !== expectedDim) return false;
 	return vector.every((v) => Number.isFinite(v));
+}
+
+/**
+ * Computes UMAP intermediate dimensionality scaled logarithmically with input embedding dimension.
+ * Formula: clamp(⌊2·log₂(D)⌋, 5, 50)
+ */
+export function adaptiveIntermediateDim(inputDim: number): number {
+	const raw = Math.floor(2 * Math.log2(inputDim));
+	if (!Number.isFinite(raw)) return 5;
+	return Math.max(5, Math.min(50, raw));
+}
+
+/**
+ * Computes UMAP neighbor count scaled with square root of note count.
+ * Formula: clamp(⌊√N⌋, 5, 50)
+ */
+export function adaptiveNeighbors(noteCount: number): number {
+	const raw = Math.floor(Math.sqrt(noteCount));
+	if (!Number.isFinite(raw)) return 5;
+	return Math.max(5, Math.min(50, raw));
+}
+
+export function createAdaptiveConfig(inputDim: number, noteCount: number): CategorizationConfig {
+	return {
+		seed: 42,
+		metric: 'cosine',
+		intermediateDim: adaptiveIntermediateDim(inputDim),
+		intermediateNeighbors: adaptiveNeighbors(noteCount),
+		strategies: [
+			{ name: 'kmeans-6', algorithm: 'kmeans', K: 6 },
+			{ name: 'kmedoids-6', algorithm: 'kmedoids', K: 6 },
+			{ name: 'hdbscan', algorithm: 'hdbscan', minClusterSize: 3, minSamples: 2 },
+		],
+	};
 }
 
 export const DEFAULT_CONFIG: CategorizationConfig = {
@@ -17,7 +51,6 @@ export const DEFAULT_CONFIG: CategorizationConfig = {
 	strategies: [
 		{ name: 'kmeans-6', algorithm: 'kmeans', K: 6 },
 		{ name: 'kmedoids-6', algorithm: 'kmedoids', K: 6 },
-		// { name: 'hdbscan-tuned', algorithm: 'hdbscan', minClusterSize: 4, minSamples: 1 },
 		{ name: 'hdbscan', algorithm: 'hdbscan', minClusterSize: 3, minSamples: 2 },
 	],
 };

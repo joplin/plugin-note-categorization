@@ -7,7 +7,7 @@
 export interface AiIndexStatus {
 	state: string;
 	ready: boolean;
-	modelId?: string;
+	modelId: string | null;
 }
 
 export interface AiEmbeddingChunk {
@@ -20,6 +20,7 @@ export interface AiEmbeddingChunk {
 export interface AiEmbeddingsPage {
 	chunks: AiEmbeddingChunk[];
 	modelId: string;
+	dimension: number;
 	nextCursor?: string;
 }
 

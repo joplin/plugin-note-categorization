@@ -13,6 +13,12 @@ export interface NativeEmbeddingChunk {
 	vector: number[];
 }
 
+export interface NativeEmbeddingResult {
+	chunks: NativeEmbeddingChunk[];
+	modelId: string;
+	dimension: number;
+}
+
 /**
  * Checks if Joplin's native AI indexing is active and ready.
  */
@@ -29,15 +35,19 @@ export const isNativeAiReady = async (): Promise<boolean> => {
 };
 
 /**
- * Pages through Joplin's native index to fetch raw embedding vectors for the requested notes.
+ * Pages through Joplin's native index to fetch raw embedding vectors for the requested notes,
+ * returning the chunks along with modelId and vector dimension metadata.
  */
-export const fetchNativeEmbeddings = async (noteIds: string[]): Promise<NativeEmbeddingChunk[]> => {
-	if (noteIds.length === 0) return [];
+export const fetchNativeEmbeddings = async (noteIds: string[]): Promise<NativeEmbeddingResult> => {
+	if (noteIds.length === 0) {
+		return { chunks: [], modelId: 'unknown', dimension: 384 };
+	}
 
 	log(`Fetching native embeddings for ${noteIds.length} notes...`);
 	const chunks: NativeEmbeddingChunk[] = [];
 	const BATCH_SIZE = 500;
 	let modelId: string | null = null;
+	let dimension: number | null = null;
 
 	for (let i = 0; i < noteIds.length; i += BATCH_SIZE) {
 		const batchIds = noteIds.slice(i, i + BATCH_SIZE);
@@ -59,10 +69,21 @@ export const fetchNativeEmbeddings = async (noteIds: string[]): Promise<NativeEm
 				throw new Error('Embedding model changed mid-fetch. Please restart.');
 			}
 			modelId = page.modelId;
+
+			if (typeof page.dimension === 'number' && page.dimension > 0) {
+				if (dimension && dimension !== page.dimension) {
+					throw new Error('Embedding dimension changed mid-fetch. Please restart.');
+				}
+				dimension = page.dimension;
+			}
+
 			for (const chunk of page.chunks) {
 				if (!chunk.noteId || !Array.isArray(chunk.vector)) {
 					log(`Skipping malformed embedding chunk: ${JSON.stringify(chunk).slice(0, 100)}`);
 					continue;
+				}
+				if (!dimension && chunk.vector.length > 0) {
+					dimension = chunk.vector.length;
 				}
 				chunks.push(chunk);
 			}
@@ -77,6 +98,11 @@ export const fetchNativeEmbeddings = async (noteIds: string[]): Promise<NativeEm
 		} while (cursor);
 	}
 
-	log(`Successfully fetched ${chunks.length} embedding chunks`);
-	return chunks;
+	const finalDimension = dimension ?? (chunks.length > 0 ? chunks[0].vector.length : 384);
+	const finalModelId = modelId ?? 'native-ai';
+
+	log(
+		`Successfully fetched ${chunks.length} native embedding chunks (model: ${finalModelId}, dim: ${finalDimension})`,
+	);
+	return { chunks, modelId: finalModelId, dimension: finalDimension };
 };
