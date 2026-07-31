@@ -50,13 +50,28 @@ export async function initializeClusterNotebooks(
 	assignments: number[],
 	existingFoldersMap: Map<string, string>,
 	createdFolderIds: string[],
+	parentNotebookName = '',
 ): Promise<{ folderMap: { [clusterId: number]: string }; uncategorizedFolderId: string }> {
 	const folderMap: { [clusterId: number]: string } = {};
 	let uncategorizedFolderId = '';
+	let rootParentFolderId = '';
+
+	const trimmedParent = parentNotebookName.trim();
+	if (trimmedParent) {
+		const { id: parentFolderId, created } = await getOrCreateFolder(existingFoldersMap, trimmedParent, '');
+		rootParentFolderId = parentFolderId;
+		if (created) {
+			createdFolderIds.push(parentFolderId);
+		}
+	}
 
 	for (const clusterId of uniqueClusterIds) {
 		const clusterName = clusterNames[clusterId] || `Cluster ${clusterId + 1}`;
-		const { id: childFolderId, created } = await getOrCreateFolder(existingFoldersMap, clusterName);
+		const { id: childFolderId, created } = await getOrCreateFolder(
+			existingFoldersMap,
+			clusterName,
+			rootParentFolderId,
+		);
 		folderMap[clusterId] = childFolderId;
 		if (created) {
 			createdFolderIds.push(childFolderId);
@@ -64,7 +79,11 @@ export async function initializeClusterNotebooks(
 	}
 
 	if (assignments.includes(-1)) {
-		const { id: noiseFolderId, created } = await getOrCreateFolder(existingFoldersMap, 'Uncategorized');
+		const { id: noiseFolderId, created } = await getOrCreateFolder(
+			existingFoldersMap,
+			'Uncategorized',
+			rootParentFolderId,
+		);
 		uncategorizedFolderId = noiseFolderId;
 		if (created) {
 			createdFolderIds.push(noiseFolderId);

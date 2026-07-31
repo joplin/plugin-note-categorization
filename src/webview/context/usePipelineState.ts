@@ -30,6 +30,11 @@ export function usePipelineState(startPolling: () => void, resetApplyState: () =
 		resetApplyState();
 
 		try {
+			if (typeof webviewApi === 'undefined') {
+				setError('Joplin plugin API not available');
+				setIsRunning(false);
+				return;
+			}
 			await webviewApi.postMessage({ type: 'run' });
 		} catch (err) {
 			setError('Failed to start pipeline: ' + String(err));
@@ -49,6 +54,7 @@ export function usePipelineState(startPolling: () => void, resetApplyState: () =
 
 	const updateClusterName = React.useCallback(
 		(clusterId: number, newName: string) => {
+			resetApplyState();
 			setStrategies((prev) => {
 				const next = [...prev];
 				if (next[selectedStrategyIndex]) {
@@ -61,11 +67,12 @@ export function usePipelineState(startPolling: () => void, resetApplyState: () =
 				return next;
 			});
 		},
-		[selectedStrategyIndex],
+		[selectedStrategyIndex, resetApplyState],
 	);
 
 	const moveNoteToCluster = React.useCallback(
 		(noteIndex: number, targetClusterId: number) => {
+			resetApplyState();
 			setStrategies((prev) => {
 				const next = [...prev];
 				if (next[selectedStrategyIndex]) {
@@ -82,7 +89,7 @@ export function usePipelineState(startPolling: () => void, resetApplyState: () =
 				return next;
 			});
 		},
-		[selectedStrategyIndex],
+		[selectedStrategyIndex, resetApplyState],
 	);
 
 	const addCluster = React.useCallback(
@@ -100,6 +107,7 @@ export function usePipelineState(startPolling: () => void, resetApplyState: () =
 				return false;
 			}
 
+			resetApplyState();
 			setStrategies((prev) => {
 				const next = [...prev];
 				const strat = next[selectedStrategyIndex];
@@ -125,7 +133,7 @@ export function usePipelineState(startPolling: () => void, resetApplyState: () =
 
 			return true;
 		},
-		[strategies, selectedStrategyIndex],
+		[strategies, selectedStrategyIndex, resetApplyState],
 	);
 
 	return {

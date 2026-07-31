@@ -30,6 +30,23 @@ export interface ChangeLogEntry {
 	createdTagIds?: string[];
 }
 
+function formatChangeLogSummary(entry: ChangeLogEntry): string {
+	const date = new Date(entry.timestamp);
+	const dateStr = date.toLocaleString(undefined, {
+		year: 'numeric',
+		month: 'short',
+		day: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit',
+	});
+	const methodLabel =
+		entry.method === 'both' ? 'Notebooks & Tags' : entry.method === 'notebooks' ? 'Notebooks Only' : 'Tags Only';
+	const noteCount = entry.notes?.length || 0;
+	const folderCount = entry.createdFolderIds?.length || 0;
+	const tagCount = entry.createdTagIds?.length || 0;
+	return `Applied: ${dateStr} | Method: ${methodLabel} | Modified Notes: ${noteCount} | Folders Created: ${folderCount} | Tags Created: ${tagCount}`;
+}
+
 export async function applyCategorizationChanges(
 	options: ApplyOptions,
 	notes: PanelNote[],
@@ -37,7 +54,7 @@ export async function applyCategorizationChanges(
 	clusterNames: { [clusterId: number]: string },
 	clusterTags: { [clusterId: number]: string[] },
 	setPanelState: (state: PanelMessage) => void,
-) {
+): Promise<void> {
 	try {
 		setPanelState({ type: 'apply_status', text: 'Fetching existing folders and tags...' });
 
@@ -59,12 +76,15 @@ export async function applyCategorizationChanges(
 		let folderMap: { [clusterId: number]: string } = {};
 		let uncategorizedFolderId = '';
 		if (options.method === 'notebooks' || options.method === 'both') {
+			const targetParentNotebook =
+				options.parentNotebookName || (await joplin.settings.value('categorization.parentNotebook')) || '';
 			const initFolders = await initializeClusterNotebooks(
 				uniqueClusterIds,
 				clusterNames,
 				assignments,
 				existingFoldersMap,
 				createdFolderIds,
+				targetParentNotebook,
 			);
 			folderMap = initFolders.folderMap;
 			uncategorizedFolderId = initFolders.uncategorizedFolderId;
@@ -108,7 +128,12 @@ export async function applyCategorizationChanges(
 				noteTitle = noteObj.title || '';
 				noteBody = needsBody ? noteObj.body || '' : '';
 			} catch (fetchErr) {
-				log(`Error fetching note data for ${note.noteId}: ${fetchErr}`);
+				log(`Error fetching note data for ${note.noteId} (note may have been deleted): ${fetchErr}`);
+				setPanelState({
+					type: 'apply_progress',
+					current: i + 1,
+					total,
+				});
 				continue;
 			}
 
@@ -166,6 +191,7 @@ export async function applyCategorizationChanges(
 			createdTagIds,
 		};
 		await joplin.settings.setValue('categorization.changeLog', JSON.stringify(changeLogEntry));
+		await joplin.settings.setValue('categorization.changeLogSummary', formatChangeLogSummary(changeLogEntry));
 
 		setPanelState({ type: 'apply_complete' });
 	} catch (err) {
@@ -229,6 +255,7 @@ export async function undoCategorizationChanges(setPanelState: (state: PanelMess
 
 		// Clear change log
 		await joplin.settings.setValue('categorization.changeLog', '');
+		await joplin.settings.setValue('categorization.changeLogSummary', 'No categorization has been applied yet.');
 
 		setPanelState({ type: 'undo_complete' });
 	} catch (err) {

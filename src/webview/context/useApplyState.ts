@@ -25,42 +25,46 @@ export function useApplyState(startPolling: () => void) {
 		setCleanupError(null);
 	}, []);
 
-	const applyChanges = async (
-		options: ApplyOptions,
-		notes: PanelNote[],
-		currentStrategy: BenchmarkResult | undefined,
-	) => {
-		if (!currentStrategy) {
-			setApplyError('No active strategy selected.');
-			return;
-		}
+	const applyChanges = React.useCallback(
+		async (options: ApplyOptions, notes: PanelNote[], currentStrategy: BenchmarkResult | undefined) => {
+			if (!currentStrategy) {
+				setApplyError('No active strategy selected.');
+				return;
+			}
 
-		setIsApplying(true);
-		setApplyProgress({ current: 0, total: notes.length });
-		setApplyError(null);
-		setApplySuccess(false);
-		setUndoSuccess(false);
-		setUndoError(null);
-		setCleanupSuccess(null);
-		setCleanupError(null);
+			setIsApplying(true);
+			setApplyProgress({ current: 0, total: notes.length });
+			setApplyError(null);
+			setApplySuccess(false);
+			setUndoSuccess(false);
+			setUndoError(null);
+			setCleanupSuccess(null);
+			setCleanupError(null);
 
-		try {
-			await webviewApi.postMessage({
-				type: 'apply',
-				options,
-				notes,
-				assignments: currentStrategy.assignments,
-				clusterNames: currentStrategy.clusterNames || {},
-				clusterTags: currentStrategy.tags || {},
-			});
-			startPolling();
-		} catch (err) {
-			setApplyError('Failed to apply changes: ' + String(err));
-			setIsApplying(false);
-		}
-	};
+			try {
+				if (typeof webviewApi === 'undefined') {
+					setApplyError('Joplin API not available');
+					setIsApplying(false);
+					return;
+				}
+				await webviewApi.postMessage({
+					type: 'apply',
+					options,
+					notes,
+					assignments: currentStrategy.assignments,
+					clusterNames: currentStrategy.clusterNames || {},
+					clusterTags: currentStrategy.tags || {},
+				});
+				startPolling();
+			} catch (err) {
+				setApplyError('Failed to apply changes: ' + String(err));
+				setIsApplying(false);
+			}
+		},
+		[startPolling],
+	);
 
-	const undoChanges = async () => {
+	const undoChanges = React.useCallback(async () => {
 		setIsUndoing(true);
 		setUndoProgress({ current: 0, total: 0 });
 		setUndoError(null);
@@ -71,15 +75,20 @@ export function useApplyState(startPolling: () => void) {
 		setCleanupError(null);
 
 		try {
+			if (typeof webviewApi === 'undefined') {
+				setUndoError('Joplin API not available');
+				setIsUndoing(false);
+				return;
+			}
 			await webviewApi.postMessage({ type: 'undo' });
 			startPolling();
 		} catch (err) {
 			setUndoError('Failed to start undo operation: ' + String(err));
 			setIsUndoing(false);
 		}
-	};
+	}, [startPolling]);
 
-	const cleanUpNotebooks = async () => {
+	const cleanUpNotebooks = React.useCallback(async () => {
 		setIsCleaningUp(true);
 		setCleanupError(null);
 		setCleanupSuccess(null);
@@ -89,13 +98,18 @@ export function useApplyState(startPolling: () => void) {
 		setUndoError(null);
 
 		try {
+			if (typeof webviewApi === 'undefined') {
+				setCleanupError('Joplin API not available');
+				setIsCleaningUp(false);
+				return;
+			}
 			await webviewApi.postMessage({ type: 'cleanUpEmptyNotebooks' });
 			startPolling();
 		} catch (err) {
 			setCleanupError('Failed to start cleanup: ' + String(err));
 			setIsCleaningUp(false);
 		}
-	};
+	}, [startPolling]);
 
 	return {
 		isApplying,

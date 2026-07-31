@@ -22,6 +22,7 @@ export const DashboardPage: React.FC = () => {
 		applyChanges,
 		isUndoing,
 		isCleaningUp,
+		settings,
 	} = useAppState();
 
 	const selectedStrategy = strategies[selectedStrategyIndex];
@@ -30,30 +31,34 @@ export const DashboardPage: React.FC = () => {
 	const [newClusterName, setNewClusterName] = React.useState('');
 	const [duplicateError, setDuplicateError] = React.useState(false);
 
-	const clusters: { [key: number]: number[] } = {};
-	const noise: number[] = [];
+	const { clusters, noise, sortedClusterIds } = React.useMemo(() => {
+		const clusters: { [key: number]: number[] } = {};
+		const noise: number[] = [];
 
-	if (selectedStrategy) {
-		const clusterNames = selectedStrategy.clusterNames || {};
-		Object.keys(clusterNames).forEach((clusterId) => {
-			clusters[Number(clusterId)] = [];
-		});
+		if (selectedStrategy) {
+			const clusterNames = selectedStrategy.clusterNames || {};
+			Object.keys(clusterNames).forEach((clusterId) => {
+				clusters[Number(clusterId)] = [];
+			});
 
-		selectedStrategy.assignments.forEach((clusterId, noteIndex) => {
-			if (clusterId === -1) {
-				noise.push(noteIndex);
-			} else {
-				if (!clusters[clusterId]) {
-					clusters[clusterId] = [];
+			selectedStrategy.assignments.forEach((clusterId, noteIndex) => {
+				if (clusterId === -1) {
+					noise.push(noteIndex);
+				} else {
+					if (!clusters[clusterId]) {
+						clusters[clusterId] = [];
+					}
+					clusters[clusterId].push(noteIndex);
 				}
-				clusters[clusterId].push(noteIndex);
-			}
-		});
-	}
+			});
+		}
 
-	const sortedClusterIds = Object.keys(clusters)
-		.map(Number)
-		.sort((a, b) => clusters[b].length - clusters[a].length);
+		const sortedClusterIds = Object.keys(clusters)
+			.map(Number)
+			.sort((a, b) => clusters[b].length - clusters[a].length);
+
+		return { clusters, noise, sortedClusterIds };
+	}, [selectedStrategy]);
 
 	const handleAddClusterSubmit = (e?: React.FormEvent) => {
 		if (e) e.preventDefault();
@@ -71,9 +76,12 @@ export const DashboardPage: React.FC = () => {
 	};
 
 	const handleApply = () => {
+		if (applySuccess || isApplying || isUndoing || isCleaningUp) {
+			return;
+		}
 		applyChanges({
 			method: 'both',
-			parentNotebookName: '',
+			parentNotebookName: settings.parentNotebook || '',
 		});
 	};
 
@@ -173,9 +181,13 @@ export const DashboardPage: React.FC = () => {
 						<button
 							className="btn-apply-primary"
 							onClick={handleApply}
-							disabled={isApplying || isUndoing || isCleaningUp}
+							disabled={isApplying || isUndoing || isCleaningUp || applySuccess}
 						>
-							{isApplying ? 'Applying changes...' : 'Apply New Categorization'}
+							{isApplying
+								? 'Applying changes...'
+								: applySuccess
+									? 'Categorization Applied'
+									: 'Apply New Categorization'}
 						</button>
 					</div>
 
@@ -186,7 +198,10 @@ export const DashboardPage: React.FC = () => {
 					)}
 
 					{applySuccess && (
-						<div className="status-banner-apply success">Categorization applied successfully!</div>
+						<div className="status-banner-apply success">
+							Categorization applied successfully! To undo or clean up, go to Tools → Options → AI
+							Categorization.
+						</div>
 					)}
 
 					{applyError && <div className="status-banner-apply error">Error: {applyError}</div>}

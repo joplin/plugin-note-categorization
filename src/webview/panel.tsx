@@ -1,27 +1,17 @@
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import { AppStateProvider, useAppState } from './context/AppStateContext';
-import { Navigation } from './components/Navigation';
 import { DashboardPage } from './pages/DashboardPage';
 import { EmptyStatePage } from './pages/EmptyStatePage';
-import { HistoryPage } from './pages/HistoryPage';
-import { SettingsPage } from './pages/SettingsPage';
 
 const AppContent: React.FC = () => {
 	const { activeView, error } = useAppState();
 
 	return (
 		<div className="panel-container">
-			<Navigation />
-
 			{error && <div className="error-banner visible">Error: {error}</div>}
 
-			<main className="panel-main">
-				{activeView === 'idle' && <EmptyStatePage />}
-				{activeView === 'dashboard' && <DashboardPage />}
-				{activeView === 'history' && <HistoryPage />}
-				{activeView === 'settings' && <SettingsPage />}
-			</main>
+			<main className="panel-main">{activeView === 'idle' ? <EmptyStatePage /> : <DashboardPage />}</main>
 		</div>
 	);
 };

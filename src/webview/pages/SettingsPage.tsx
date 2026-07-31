@@ -1,25 +1,33 @@
 import * as React from 'react';
+import { useAppState } from '../context/AppStateContext';
 
 export const SettingsPage: React.FC = () => {
+	const { settings } = useAppState();
+
 	return (
-		<div className="empty-state">
-			<div className="empty-title">Settings</div>
+		<div className="empty-state" style={{ padding: '24px 16px' }}>
+			<div className="empty-title">Plugin Settings</div>
 			<div className="empty-subtitle">
-				Model settings and clustering parameters will be configurable here in a future version.
+				Settings are managed in Joplin&apos;s native Options window. Go to{' '}
+				<strong>Tools &rarr; Options &rarr; AI Categorization</strong> to configure the plugin.
 			</div>
-			<div className="config-card">
-				<div className="config-card-header">Default Configuration:</div>
+
+			<div
+				className="config-card"
+				style={{ width: '100%', maxWidth: '320px', textAlign: 'left', marginTop: '20px' }}
+			>
+				<div className="config-card-header">Active Configuration:</div>
 				<div className="config-card-item">
-					• <strong>Model:</strong> Xenova/all-MiniLM-L6-v2 (384-dim)
+					• <strong>Distance Metric:</strong> {settings.metric || 'Cosine Similarity'}
 				</div>
 				<div className="config-card-item">
-					• <strong>Metric:</strong> Cosine Similarity
+					• <strong>Target Notebook:</strong> {settings.parentNotebook || '(Root Notebooks)'}
 				</div>
 				<div className="config-card-item">
-					• <strong>Limit:</strong> 200 Tokens/Chunk
+					• <strong>Embedding Model:</strong> all-MiniLM-L6-v2 (384-dim)
 				</div>
 				<div className="config-card-item">
-					• <strong>Strategies:</strong> K-Means, K-Medoids, HDBSCAN
+					• <strong>Clustering Strategies:</strong> Auto K-Means, Auto K-Medoids, HDBSCAN
 				</div>
 			</div>
 		</div>
