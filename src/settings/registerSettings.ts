@@ -55,9 +55,7 @@ export async function runNativeCleanup(source: string, operationState: Operation
 			await joplin.views.dialogs.showMessageBox(lastMessage);
 		}
 	} catch (err) {
-		await joplin.views.dialogs.showMessageBox(
-			`Cleanup failed: ${err instanceof Error ? err.message : String(err)}`,
-		);
+		await joplin.views.dialogs.showMessageBox(`Cleanup failed: ${err instanceof Error ? err.message : String(err)}`);
 	} finally {
 		operationState.inProgress = false;
 	}
@@ -71,35 +69,13 @@ export async function registerPluginSettings(operationState: OperationState): Pr
 		});
 
 		await joplin.settings.registerSettings({
-			'categorization.metric': {
-				value: 'cosine',
-				type: SettingType.String,
-				isEnum: true,
-				options: {
-					cosine: 'Cosine Similarity (Recommended)',
-					euclidean: 'Euclidean Distance',
-				},
-				section: 'aiCategorization',
-				public: true,
-				label: 'Distance Metric',
-				description: 'Distance metric used for note embedding comparisons and clustering.',
-			},
 			'categorization.parentNotebook': {
 				value: '',
 				type: SettingType.String,
 				section: 'aiCategorization',
 				public: true,
 				label: 'Default Target Notebook',
-				description:
-					'Default parent notebook where newly categorized sub-notebooks will be created (leave empty for root).',
-			},
-			'categorization.seed': {
-				value: 42,
-				type: SettingType.Int,
-				section: 'aiCategorization',
-				public: true,
-				label: 'Random Seed',
-				description: 'Random seed for reproducible UMAP projections and K-Means clustering.',
+				description: 'Default parent notebook where newly categorized sub-notebooks will be created (leave empty for root).',
 			},
 			'categorization.changeLog': {
 				value: '',
@@ -123,8 +99,7 @@ export async function registerPluginSettings(operationState: OperationState): Pr
 				section: 'aiCategorization',
 				public: true,
 				label: 'Undo Last Categorization',
-				description:
-					'Check this box and click Apply/OK to revert note movements and tags from the previous run.',
+				description: 'Check this box and click Apply/OK to revert note movements and tags from the previous run.',
 			},
 			'categorization.cleanUpAction': {
 				value: false,
@@ -132,8 +107,7 @@ export async function registerPluginSettings(operationState: OperationState): Pr
 				section: 'aiCategorization',
 				public: true,
 				label: 'Clean Up Empty Notebooks',
-				description:
-					'Check this box and click Apply/OK to check for and remove empty notebooks leftover after note moves.',
+				description: 'Check this box and click Apply/OK to check for and remove empty notebooks leftover after note moves.',
 			},
 		});
 

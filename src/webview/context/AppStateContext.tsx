@@ -283,8 +283,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 	React.useEffect(() => {
 		fetchSettings();
 		if (typeof webviewApi !== 'undefined') {
-			webviewApi
-				.postMessage({ type: 'getInitialState' })
+			webviewApi.postMessage({ type: 'getInitialState' })
 				.then((initialState) => {
 					if (initialState) {
 						handlePollResponse(initialState);
@@ -301,16 +300,14 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 	React.useEffect(() => {
 		if (typeof webviewApi !== 'undefined' && strategies && strategies.length > 0) {
-			webviewApi
-				.postMessage({
-					type: 'syncState',
-					strategies,
-					notes,
-					selectedStrategyIndex,
-				})
-				.catch((err) => {
-					console.error('syncState error:', err);
-				});
+			webviewApi.postMessage({
+				type: 'syncState',
+				strategies,
+				notes,
+				selectedStrategyIndex,
+			}).catch((err) => {
+				console.error('syncState error:', err);
+			});
 		}
 	}, [strategies, notes, selectedStrategyIndex]);
 

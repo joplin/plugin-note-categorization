@@ -4,19 +4,21 @@ export interface ClusteringStrategy {
 	/** Human-readable label for this run, e.g. 'kmeans-5' */
 	name: string;
 	algorithm: ClusteringAlgorithm;
-	/** Number of clusters (kmeans / kmedoids) */
-	K?: number;
+	/** Number of clusters (kmeans / kmedoids). Use 'auto' for automatic selection via silhouette sweep. */
+	K?: number | 'auto';
 	/** Minimum points to form a cluster (hdbscan, default: 3) */
 	minClusterSize?: number;
 	/** How many neighbors define a "core" point (hdbscan, default: minClusterSize). Lower = fewer outliers */
 	minSamples?: number;
 }
 
+export type MetricType = 'cosine' | 'euclidean';
+
 export interface CategorizationConfig {
 	/** Seed for UMAP and clustering reproducibility */
 	seed: number;
 	/** Distance metric for clustering and UMAP */
-	metric: 'cosine' | 'euclidean';
+	metric: MetricType;
 	/**
 	 * If set, UMAP-reduce to this dimensionality before clustering.
 	 * null = cluster directly on the raw embedding vectors (e.g. 384D).

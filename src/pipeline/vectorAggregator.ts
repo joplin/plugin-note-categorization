@@ -128,3 +128,36 @@ export const blendVectors = (body: number[], title: number[], alpha: number): nu
 	}
 	return normalise(blended);
 };
+
+/**
+ * Computes a weighted average of chunk vectors where chunk 0 (which contains the title)
+ * is given a higher weight (default: 3.0) to prevent dilution.
+ */
+export const averageChunksWeighted = (
+	chunks: { chunkIndex: number; vector: number[] }[],
+	titleWeight = 3.0,
+): number[] => {
+	if (chunks.length === 0) throw new Error('Cannot average zero chunks');
+	const dim = chunks[0].vector.length;
+	for (const chunk of chunks) {
+		if (chunk.vector.length !== dim) throw new Error('Cannot average vectors of different dimensions');
+	}
+	if (chunks.length === 1) {
+		return normalise(chunks[0].vector);
+	}
+
+	const sum = new Array<number>(dim).fill(0);
+	let totalWeight = 0;
+	for (const chunk of chunks) {
+		const weight = chunk.chunkIndex === 0 ? titleWeight : 1.0;
+		totalWeight += weight;
+		for (let i = 0; i < dim; i++) {
+			sum[i] += chunk.vector[i] * weight;
+		}
+	}
+	for (let i = 0; i < dim; i++) {
+		sum[i] /= totalWeight;
+	}
+
+	return normalise(sum);
+};
