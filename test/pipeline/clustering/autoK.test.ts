@@ -90,19 +90,19 @@ describe('autoK computeKRange', () => {
 	});
 
 	it('computes correct range for small-to-medium datasets (N < 20, uses N/2)', () => {
-		expect(computeKRange(6)).toEqual([2, 3]);  // floor(6/2) = 3
-		expect(computeKRange(8)).toEqual([2, 4]);  // floor(8/2) = 4
-		expect(computeKRange(9)).toEqual([2, 4]);  // floor(9/2) = 4
+		expect(computeKRange(6)).toEqual([2, 3]); // floor(6/2) = 3
+		expect(computeKRange(8)).toEqual([2, 4]); // floor(8/2) = 4
+		expect(computeKRange(9)).toEqual([2, 4]); // floor(9/2) = 4
 		expect(computeKRange(10)).toEqual([2, 5]); // floor(10/2) = 5
 		expect(computeKRange(12)).toEqual([2, 6]); // floor(12/2) = 6
 		expect(computeKRange(19)).toEqual([2, 9]); // floor(19/2) = 9
 	});
 
 	it('computes correct range for larger datasets (N >= 20, uses N/3)', () => {
-		expect(computeKRange(20)).toEqual([2, 6]);   // floor(20/3) = 6
-		expect(computeKRange(30)).toEqual([2, 10]);  // floor(30/3) = 10
-		expect(computeKRange(45)).toEqual([2, 15]);  // floor(45/3) = 15, hits cap
-		expect(computeKRange(56)).toEqual([2, 15]);  // floor(56/3) = 18, capped at 15
+		expect(computeKRange(20)).toEqual([2, 6]); // floor(20/3) = 6
+		expect(computeKRange(30)).toEqual([2, 10]); // floor(30/3) = 10
+		expect(computeKRange(45)).toEqual([2, 15]); // floor(45/3) = 15, hits cap
+		expect(computeKRange(56)).toEqual([2, 15]); // floor(56/3) = 18, capped at 15
 		expect(computeKRange(100)).toEqual([2, 15]); // floor(100/3) = 33, capped at 15
 		expect(computeKRange(500)).toEqual([2, 15]); // capped at MAX_K_CAP=15
 	});
@@ -158,13 +158,25 @@ describe('autoK findOptimalK', () => {
 		// should be within the 0.025 tolerance band and thus selected.
 		const FOUR_CLUSTERS = [
 			// Cluster near [0, 0]
-			...[0.1, 0.2, 0.0, 0.15, 0.05, 0.12, 0.08, 0.18].map((x, i) => [x, [0.2, 0.1, 0.0, 0.15, 0.05, 0.08, 0.12, 0.11][i]]),
+			...[0.1, 0.2, 0.0, 0.15, 0.05, 0.12, 0.08, 0.18].map((x, i) => [
+				x,
+				[0.2, 0.1, 0.0, 0.15, 0.05, 0.08, 0.12, 0.11][i],
+			]),
 			// Cluster near [10, 0]
-			...[10.1, 10.2, 10.0, 10.15, 10.05, 10.12, 10.08, 10.18].map((x, i) => [x, [0.2, 0.1, 0.0, 0.15, 0.05, 0.08, 0.12, 0.11][i]]),
+			...[10.1, 10.2, 10.0, 10.15, 10.05, 10.12, 10.08, 10.18].map((x, i) => [
+				x,
+				[0.2, 0.1, 0.0, 0.15, 0.05, 0.08, 0.12, 0.11][i],
+			]),
 			// Cluster near [0, 10]
-			...[0.1, 0.2, 0.0, 0.15, 0.05, 0.12, 0.08, 0.18].map((x, i) => [x, 10 + [0.2, 0.1, 0.0, 0.15, 0.05, 0.08, 0.12, 0.11][i]]),
+			...[0.1, 0.2, 0.0, 0.15, 0.05, 0.12, 0.08, 0.18].map((x, i) => [
+				x,
+				10 + [0.2, 0.1, 0.0, 0.15, 0.05, 0.08, 0.12, 0.11][i],
+			]),
 			// Cluster near [10, 10]
-			...[10.1, 10.2, 10.0, 10.15, 10.05, 10.12, 10.08, 10.18].map((x, i) => [x, 10 + [0.2, 0.1, 0.0, 0.15, 0.05, 0.08, 0.12, 0.11][i]]),
+			...[10.1, 10.2, 10.0, 10.15, 10.05, 10.12, 10.08, 10.18].map((x, i) => [
+				x,
+				10 + [0.2, 0.1, 0.0, 0.15, 0.05, 0.08, 0.12, 0.11][i],
+			]),
 		];
 
 		const result = findOptimalK(FOUR_CLUSTERS, 'kmeans', euclideanDistance, 42);

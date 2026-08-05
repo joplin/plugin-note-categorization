@@ -48,10 +48,7 @@ export function createAdaptiveConfig(
 	};
 }
 
-export function createPipelineConfig(
-	metric: MetricType = 'cosine',
-	seed = 42,
-): CategorizationConfig {
+export function createPipelineConfig(metric: MetricType = 'cosine', seed = 42): CategorizationConfig {
 	return {
 		seed,
 		metric,

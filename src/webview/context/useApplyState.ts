@@ -26,11 +26,7 @@ export function useApplyState(startPolling: () => void) {
 	}, []);
 
 	const applyChanges = React.useCallback(
-		async (
-			options: ApplyOptions,
-			notes: PanelNote[],
-			currentStrategy: BenchmarkResult | undefined,
-		) => {
+		async (options: ApplyOptions, notes: PanelNote[], currentStrategy: BenchmarkResult | undefined) => {
 			if (!currentStrategy) {
 				setApplyError('No active strategy selected.');
 				return;

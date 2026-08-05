@@ -103,7 +103,12 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 					log('Too few indexed notes found in native DB. Falling back to local ONNX Web Worker.');
 				} else {
 					callbacks.onStatus('Clustering...');
-					const adaptiveConfig = createAdaptiveConfig(nativeResult.dimension, validNotes.length, userMetric, userSeed);
+					const adaptiveConfig = createAdaptiveConfig(
+						nativeResult.dimension,
+						validNotes.length,
+						userMetric,
+						userSeed,
+					);
 					const results = benchmark(vectors, adaptiveConfig);
 
 					// Post-process to extract tags/keywords for each cluster (keep parity with local pipeline)

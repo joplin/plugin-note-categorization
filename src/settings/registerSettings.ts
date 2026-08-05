@@ -55,7 +55,9 @@ export async function runNativeCleanup(source: string, operationState: Operation
 			await joplin.views.dialogs.showMessageBox(lastMessage);
 		}
 	} catch (err) {
-		await joplin.views.dialogs.showMessageBox(`Cleanup failed: ${err instanceof Error ? err.message : String(err)}`);
+		await joplin.views.dialogs.showMessageBox(
+			`Cleanup failed: ${err instanceof Error ? err.message : String(err)}`,
+		);
 	} finally {
 		operationState.inProgress = false;
 	}
@@ -75,7 +77,8 @@ export async function registerPluginSettings(operationState: OperationState): Pr
 				section: 'aiCategorization',
 				public: true,
 				label: 'Default Target Notebook',
-				description: 'Default parent notebook where newly categorized sub-notebooks will be created (leave empty for root).',
+				description:
+					'Default parent notebook where newly categorized sub-notebooks will be created (leave empty for root).',
 			},
 			'categorization.changeLog': {
 				value: '',
@@ -99,7 +102,8 @@ export async function registerPluginSettings(operationState: OperationState): Pr
 				section: 'aiCategorization',
 				public: true,
 				label: 'Undo Last Categorization',
-				description: 'Check this box and click Apply/OK to revert note movements and tags from the previous run.',
+				description:
+					'Check this box and click Apply/OK to revert note movements and tags from the previous run.',
 			},
 			'categorization.cleanUpAction': {
 				value: false,
@@ -107,7 +111,8 @@ export async function registerPluginSettings(operationState: OperationState): Pr
 				section: 'aiCategorization',
 				public: true,
 				label: 'Clean Up Empty Notebooks',
-				description: 'Check this box and click Apply/OK to check for and remove empty notebooks leftover after note moves.',
+				description:
+					'Check this box and click Apply/OK to check for and remove empty notebooks leftover after note moves.',
 			},
 		});
 

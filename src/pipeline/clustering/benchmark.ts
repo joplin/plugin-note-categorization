@@ -131,13 +131,12 @@ export function benchmark(
 	// UMAP output coordinates live in Euclidean space, so clustering and
 	// silhouette evaluation must use Euclidean distance regardless of
 	// the metric used by UMAP internally to build its neighborhood graph.
-	const clusterDistFn: DistanceFn = (distanceMatrix || config.intermediateDim !== null)
-		? euclideanDistance
-		: distFn;
+	const clusterDistFn: DistanceFn = distanceMatrix || config.intermediateDim !== null ? euclideanDistance : distFn;
 
-	const metricName = (distanceMatrix || config.intermediateDim !== null)
-		? `euclidean (UMAP ${clusteringVectors[0]?.length ?? 0}D space)`
-		: config.metric;
+	const metricName =
+		distanceMatrix || config.intermediateDim !== null
+			? `euclidean (UMAP ${clusteringVectors[0]?.length ?? 0}D space)`
+			: config.metric;
 	log(`Clustering metric: using ${metricName} distance`);
 
 	const results: BenchmarkResult[] = [];
