@@ -51,7 +51,12 @@ export type WebviewMessage =
 	| { type: 'run' }
 	| { type: 'poll' }
 	| { type: 'getInitialState' }
-	| { type: 'syncState'; strategies: BenchmarkResult[]; notes: PanelNote[]; selectedStrategyIndex: number }
+	| {
+		type: 'syncState';
+		strategies: BenchmarkResult[];
+		notes: PanelNote[];
+		selectedStrategyIndex: number;
+	}
 	| { type: 'openNote'; noteId: string }
 	| { type: 'getSettings' }
 	| { type: 'updateSetting'; key: string; value: string }

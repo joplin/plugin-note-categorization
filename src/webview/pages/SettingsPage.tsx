@@ -8,17 +8,14 @@ export const SettingsPage: React.FC = () => {
 		<div className="empty-state" style={{ padding: '24px 16px' }}>
 			<div className="empty-title">Plugin Settings</div>
 			<div className="empty-subtitle">
-				Settings are managed in Joplin&apos;s native Options window. Go to{' '}
-				<strong>Tools &rarr; Options &rarr; AI Categorization</strong> to configure the plugin.
+				Settings are managed in Joplin&apos;s native Options window.
+				Go to <strong>Tools &rarr; Options &rarr; AI Categorization</strong> to configure the plugin.
 			</div>
 
-			<div
-				className="config-card"
-				style={{ width: '100%', maxWidth: '320px', textAlign: 'left', marginTop: '20px' }}
-			>
+			<div className="config-card" style={{ width: '100%', maxWidth: '320px', textAlign: 'left', marginTop: '20px' }}>
 				<div className="config-card-header">Active Configuration:</div>
 				<div className="config-card-item">
-					• <strong>Distance Metric:</strong> {settings.metric || 'Cosine Similarity'}
+					• <strong>Distance Metric:</strong> Cosine Similarity
 				</div>
 				<div className="config-card-item">
 					• <strong>Target Notebook:</strong> {settings.parentNotebook || '(Root Notebooks)'}

@@ -1,8 +1,9 @@
 import { CategorizationConfig, BenchmarkResult, ClusteringStrategy } from '../../types/cluster';
-import { DistanceFn, getDistanceFn, silhouetteScore } from './metrics';
+import { DistanceFn, getDistanceFn, silhouetteScore, euclideanDistance } from './metrics';
 import { kmeans } from './kmeans';
 import { kmedoids } from './kmedoids';
 import { hdbscan } from './hdbscan';
+import { findOptimalK } from './autoK';
 import { UmapProjector } from '../UmapProjector';
 import { log } from '../../utils/logger';
 
@@ -12,7 +13,15 @@ const DEFAULT_MIN_CLUSTER_SIZE = 3;
 /**
  * Runs a single clustering strategy and returns the cluster assignments.
  */
-function runStrategy(vectors: number[][], strategy: ClusteringStrategy, distFn: DistanceFn, seed: number): number[] {
+export function runStrategy(
+	vectors: number[][],
+	strategy: ClusteringStrategy,
+	distFn: DistanceFn,
+	seed: number,
+): number[] {
+	if (strategy.K === 'auto') {
+		throw new Error(`runStrategy called with K='auto' for ${strategy.algorithm}. Use findOptimalK() instead.`);
+	}
 	switch (strategy.algorithm) {
 		case 'kmeans':
 			return kmeans(vectors, strategy.K ?? DEFAULT_K, distFn, seed);
@@ -119,6 +128,18 @@ export function benchmark(
 		clusteringVectors = projector.project(vectors);
 	}
 
+	// UMAP output coordinates live in Euclidean space, so clustering and
+	// silhouette evaluation must use Euclidean distance regardless of
+	// the metric used by UMAP internally to build its neighborhood graph.
+	const clusterDistFn: DistanceFn = (distanceMatrix || config.intermediateDim !== null)
+		? euclideanDistance
+		: distFn;
+
+	const metricName = (distanceMatrix || config.intermediateDim !== null)
+		? `euclidean (UMAP ${clusteringVectors[0]?.length ?? 0}D space)`
+		: config.metric;
+	log(`Clustering metric: using ${metricName} distance`);
+
 	const results: BenchmarkResult[] = [];
 
 	for (const strategy of config.strategies) {
@@ -126,20 +147,31 @@ export function benchmark(
 		const startTime = performance.now();
 
 		try {
-			const assignments = runStrategy(clusteringVectors, strategy, distFn, config.seed);
+			let assignments: number[];
+			let score: number;
+
+			if (strategy.K === 'auto' && (strategy.algorithm === 'kmeans' || strategy.algorithm === 'kmedoids')) {
+				// Auto-K: sweep K range and pick the best
+				const autoResult = findOptimalK(clusteringVectors, strategy.algorithm, clusterDistFn, config.seed);
+				assignments = autoResult.assignments;
+				score = autoResult.silhouetteScore;
+			} else {
+				assignments = runStrategy(clusteringVectors, strategy, clusterDistFn, config.seed);
+				score = 0;
+			}
+
 			const timeMs = performance.now() - startTime;
 
 			const outlierCount = assignments.filter((a) => a < 0).length;
 			const clusterSizes = computeClusterSizes(assignments);
 			const clusterCount = clusterSizes.filter((s) => s > 0).length;
 
-			// For silhouette, exclude noise points (-1) since they're intentionally unassigned
-			let score = 0;
-			if (clusterCount >= 2) {
+			// Compute silhouette if not already computed by auto-K
+			if (strategy.K !== 'auto' && clusterCount >= 2) {
 				const clusteredIndices = assignments.map((a, i) => (a >= 0 ? i : -1)).filter((i) => i >= 0);
 				const clusteredVectors = clusteredIndices.map((i) => clusteringVectors[i]);
 				const clusteredAssignments = clusteredIndices.map((i) => assignments[i]);
-				score = silhouetteScore(clusteredVectors, clusteredAssignments, distFn);
+				score = silhouetteScore(clusteredVectors, clusteredAssignments, clusterDistFn);
 			}
 
 			results.push({

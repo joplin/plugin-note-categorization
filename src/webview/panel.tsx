@@ -11,7 +11,9 @@ const AppContent: React.FC = () => {
 		<div className="panel-container">
 			{error && <div className="error-banner visible">Error: {error}</div>}
 
-			<main className="panel-main">{activeView === 'idle' ? <EmptyStatePage /> : <DashboardPage />}</main>
+			<main className="panel-main">
+				{activeView === 'idle' ? <EmptyStatePage /> : <DashboardPage />}
+			</main>
 		</div>
 	);
 };
