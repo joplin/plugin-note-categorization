@@ -40,42 +40,6 @@ body {
 	flex-direction: column;
 }
 
-/* NAVIGATION TABS */
-
-.panel-navigation {
-	display: flex;
-	gap: 0;
-	background: var(--joplin-background-color);
-	border-bottom: 1px solid var(--joplin-divider-color);
-	padding: 0 16px;
-}
-
-.nav-tab {
-	position: relative;
-	padding: 10px 14px;
-	background: transparent;
-	border: none;
-	border-bottom: 2px solid transparent;
-	color: var(--joplin-color);
-	opacity: 0.5;
-	font-family: inherit;
-	font-size: 0.85em;
-	font-weight: 500;
-	cursor: pointer;
-	transition: opacity 150ms ease, border-color 150ms ease;
-	letter-spacing: 0.01em;
-}
-
-.nav-tab:hover {
-	opacity: 0.8;
-}
-
-.nav-tab.active {
-	opacity: 1;
-	font-weight: 600;
-	border-bottom-color: var(--joplin-color);
-}
-
 /* HEADER */
 
 .panel-header {
@@ -296,7 +260,7 @@ body {
 	display: inline-block;
 	padding: 3px 10px;
 	border-radius: 100px;
-	font-size: 0.72em;
+	font-size: 0.8em;
 	font-weight: 500;
 	background: color-mix(in srgb, var(--joplin-color) 4%, var(--joplin-background-color));
 	border: 1px solid var(--joplin-divider-color);
@@ -386,7 +350,7 @@ body {
 }
 
 .cluster-title {
-	font-size: 0.88em;
+	font-size: 0.95em;
 	font-weight: 600;
 	white-space: nowrap;
 	overflow: hidden;
@@ -416,7 +380,7 @@ body {
 }
 
 .cluster-title-input {
-	font-size: 0.88em;
+	font-size: 0.95em;
 	font-weight: 600;
 	font-family: inherit;
 	padding: 2px 6px;
@@ -435,7 +399,7 @@ body {
 	flex-wrap: wrap;
 	gap: 4px;
 	margin-left: 0;
-	max-height: 20px;
+	max-height: 24px;
 	overflow: hidden;
 	width: 100%;
 }
@@ -446,12 +410,12 @@ body {
 }
 
 .cluster-tag {
-	font-size: 0.7em;
+	font-size: 0.82em;
 	font-weight: 500;
 	color: var(--joplin-color);
-	opacity: 0.5;
+	opacity: 0.65;
 	background: color-mix(in srgb, var(--joplin-color) 4%, var(--joplin-background-color));
-	padding: 1px 7px;
+	padding: 2px 8px;
 	border: 1px solid color-mix(in srgb, var(--joplin-divider-color) 60%, transparent);
 	border-radius: 100px;
 	white-space: nowrap;
@@ -460,8 +424,8 @@ body {
 /* COUNT & CHEVRON */
 
 .cluster-count {
-	font-size: 0.75em;
-	opacity: 0.4;
+	font-size: 0.82em;
+	opacity: 0.5;
 	white-space: nowrap;
 	flex-shrink: 0;
 	margin-left: 8px;
@@ -504,9 +468,9 @@ body {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	padding: 7px 14px 7px 28px;
+	padding: 8px 14px 8px 28px;
 	cursor: pointer;
-	font-size: 0.82em;
+	font-size: 0.9em;
 	transition: background 100ms ease;
 }
 

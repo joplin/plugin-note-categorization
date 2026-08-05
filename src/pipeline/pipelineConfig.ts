@@ -1,4 +1,4 @@
-import { CategorizationConfig } from '../types/cluster';
+import { CategorizationConfig, MetricType } from '../types/cluster';
 
 /** Default dimensionality of local ONNX embedding vectors (all-MiniLM-L6-v2 / multilingual-e5-small). */
 export const EMBEDDING_DIM = 384;
@@ -29,28 +29,37 @@ export function adaptiveNeighbors(noteCount: number): number {
 	return Math.max(5, Math.min(50, raw));
 }
 
-export function createAdaptiveConfig(inputDim: number, noteCount: number): CategorizationConfig {
+export function createAdaptiveConfig(
+	inputDim: number,
+	noteCount: number,
+	metric: MetricType = 'cosine',
+	seed = 42,
+): CategorizationConfig {
 	return {
-		seed: 42,
-		metric: 'cosine',
+		seed,
+		metric,
 		intermediateDim: adaptiveIntermediateDim(inputDim),
 		intermediateNeighbors: adaptiveNeighbors(noteCount),
 		strategies: [
-			{ name: 'kmeans-6', algorithm: 'kmeans', K: 6 },
-			{ name: 'kmedoids-6', algorithm: 'kmedoids', K: 6 },
+			{ name: 'kmeans-auto', algorithm: 'kmeans', K: 'auto' },
+			{ name: 'kmedoids-auto', algorithm: 'kmedoids', K: 'auto' },
 			{ name: 'hdbscan', algorithm: 'hdbscan', minClusterSize: 3, minSamples: 2 },
 		],
 	};
 }
 
-export const DEFAULT_CONFIG: CategorizationConfig = {
-	seed: 42,
-	metric: 'cosine',
-	intermediateDim: 8,
-	intermediateNeighbors: 5,
-	strategies: [
-		{ name: 'kmeans-6', algorithm: 'kmeans', K: 6 },
-		{ name: 'kmedoids-6', algorithm: 'kmedoids', K: 6 },
-		{ name: 'hdbscan', algorithm: 'hdbscan', minClusterSize: 3, minSamples: 2 },
-	],
-};
+export function createPipelineConfig(metric: MetricType = 'cosine', seed = 42): CategorizationConfig {
+	return {
+		seed,
+		metric,
+		intermediateDim: 8,
+		intermediateNeighbors: 5,
+		strategies: [
+			{ name: 'kmeans-auto', algorithm: 'kmeans', K: 'auto' },
+			{ name: 'kmedoids-auto', algorithm: 'kmedoids', K: 'auto' },
+			{ name: 'hdbscan', algorithm: 'hdbscan', minClusterSize: 3, minSamples: 2 },
+		],
+	};
+}
+
+export const DEFAULT_CONFIG: CategorizationConfig = createPipelineConfig();

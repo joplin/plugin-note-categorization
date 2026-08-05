@@ -6,7 +6,7 @@ import { usePipelineState } from './usePipelineState';
 
 const POLL_INTERVAL_MS = 500;
 
-export type ViewType = 'idle' | 'dashboard' | 'history' | 'settings';
+export type ViewType = 'idle' | 'dashboard';
 
 interface AppStateContextType {
 	isRunning: boolean;
@@ -26,7 +26,6 @@ interface AppStateContextType {
 
 	// settings states
 	settings: {
-		metric: string;
 		parentNotebook: string;
 		changeLog: string;
 	};
@@ -153,7 +152,8 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 						(s: BenchmarkResult) =>
 							!s.strategyName.startsWith('kmeans') && !s.strategyName.startsWith('kmedoids'),
 					);
-					setSelectedStrategyIndex(nonTestingIdx !== -1 ? nonTestingIdx : 0);
+					const fallbackIdx = nonTestingIdx !== -1 ? nonTestingIdx : 0;
+					setSelectedStrategyIndex(msg.selectedStrategyIndex ?? fallbackIdx);
 					setError(null);
 					setActiveView('dashboard');
 					break;
@@ -267,16 +267,51 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 	const startPolling = React.useCallback(() => {
 		stopPolling();
 		pollIntervalRef.current = setInterval(async () => {
-			const state = await webviewApi.postMessage({ type: 'poll' });
-			if (state) {
-				handlePollResponse(state);
+			if (typeof webviewApi === 'undefined') return;
+			try {
+				const state = await webviewApi.postMessage({ type: 'poll' });
+				if (state) {
+					handlePollResponse(state);
+				}
+			} catch (err) {
+				console.error('Polling error:', err);
 			}
 		}, POLL_INTERVAL_MS);
 	}, [stopPolling, handlePollResponse]);
 
 	React.useEffect(() => {
 		fetchSettings();
-	}, [fetchSettings]);
+		if (typeof webviewApi !== 'undefined') {
+			webviewApi
+				.postMessage({ type: 'getInitialState' })
+				.then((initialState) => {
+					if (initialState) {
+						handlePollResponse(initialState);
+						if (initialState.type === 'status' || initialState.type === 'progress') {
+							startPolling();
+						}
+					}
+				})
+				.catch((err) => {
+					console.error('getInitialState error:', err);
+				});
+		}
+	}, [fetchSettings, handlePollResponse, startPolling]);
+
+	React.useEffect(() => {
+		if (typeof webviewApi !== 'undefined' && strategies && strategies.length > 0) {
+			webviewApi
+				.postMessage({
+					type: 'syncState',
+					strategies,
+					notes,
+					selectedStrategyIndex,
+				})
+				.catch((err) => {
+					console.error('syncState error:', err);
+				});
+		}
+	}, [strategies, notes, selectedStrategyIndex]);
 
 	React.useEffect(() => {
 		return () => {
@@ -284,10 +319,13 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 		};
 	}, [stopPolling]);
 
-	const handleApplyChanges = async (options: ApplyOptions) => {
-		const currentStrategy = strategies[selectedStrategyIndex];
-		await applyChanges(options, notes, currentStrategy);
-	};
+	const handleApplyChanges = React.useCallback(
+		async (options: ApplyOptions) => {
+			const currentStrategy = strategies[selectedStrategyIndex];
+			await applyChanges(options, notes, currentStrategy);
+		},
+		[strategies, selectedStrategyIndex, notes, applyChanges],
+	);
 
 	return (
 		<AppStateContext.Provider

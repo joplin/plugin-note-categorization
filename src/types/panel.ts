@@ -32,7 +32,7 @@ export interface ApplyMessage {
 export type PanelMessage =
 	| { type: 'status'; text: string }
 	| { type: 'progress'; current: number; total: number; cached: number; skipped: number }
-	| { type: 'results'; strategies: BenchmarkResult[]; notes: PanelNote[] }
+	| { type: 'results'; strategies: BenchmarkResult[]; notes: PanelNote[]; selectedStrategyIndex?: number }
 	| { type: 'error'; message: string }
 	| { type: 'apply_status'; text: string }
 	| { type: 'apply_progress'; current: number; total: number }
@@ -50,6 +50,8 @@ export type PanelMessage =
 export type WebviewMessage =
 	| { type: 'run' }
 	| { type: 'poll' }
+	| { type: 'getInitialState' }
+	| { type: 'syncState'; strategies: BenchmarkResult[]; notes: PanelNote[]; selectedStrategyIndex: number }
 	| { type: 'openNote'; noteId: string }
 	| { type: 'getSettings' }
 	| { type: 'updateSetting'; key: string; value: string }

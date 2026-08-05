@@ -5,6 +5,7 @@ import {
 	cosineSimilarity,
 	computeTitleWeight,
 	blendVectors,
+	averageChunksWeighted,
 } from '../../src/pipeline/vectorAggregator';
 
 describe('averageVectors', () => {
@@ -187,5 +188,57 @@ describe('blendVectors', () => {
 
 	it('throws on dimension mismatch', () => {
 		expect(() => blendVectors([1, 2], [1, 2, 3], 0.5)).toThrow('different dimensions');
+	});
+});
+
+describe('averageChunksWeighted', () => {
+	it('normalizes a single chunk', () => {
+		const result = averageChunksWeighted([{ chunkIndex: 0, vector: [3, 4] }]);
+		expect(result[0]).toBeCloseTo(0.6, 10);
+		expect(result[1]).toBeCloseTo(0.8, 10);
+	});
+
+	it('computes weighted average where chunk 0 gets higher weight', () => {
+		// Chunk 0 has vector [1, 0], chunk 1 has vector [0, 1]
+		// With default titleWeight = 3.0:
+		// sum = 3.0 * [1, 0] + 1.0 * [0, 1] = [3.0, 1.0]
+		// norm = sqrt(9 + 1) = sqrt(10) ≈ 3.16227766
+		// normalized = [3/√10, 1/√10]
+		const result = averageChunksWeighted([
+			{ chunkIndex: 0, vector: [1, 0] },
+			{ chunkIndex: 1, vector: [0, 1] },
+		]);
+		const norm = Math.sqrt(10);
+		expect(result[0]).toBeCloseTo(3 / norm, 10);
+		expect(result[1]).toBeCloseTo(1 / norm, 10);
+	});
+
+	it('uses custom titleWeight', () => {
+		// Custom titleWeight = 5.0
+		// sum = 5.0 * [1, 0] + 1.0 * [0, 1] = [5.0, 1.0]
+		// norm = sqrt(25 + 1) = sqrt(26)
+		const result = averageChunksWeighted(
+			[
+				{ chunkIndex: 0, vector: [1, 0] },
+				{ chunkIndex: 1, vector: [0, 1] },
+			],
+			5.0,
+		);
+		const norm = Math.sqrt(26);
+		expect(result[0]).toBeCloseTo(5 / norm, 10);
+		expect(result[1]).toBeCloseTo(1 / norm, 10);
+	});
+
+	it('throws on empty input', () => {
+		expect(() => averageChunksWeighted([])).toThrow('Cannot average zero chunks');
+	});
+
+	it('throws on dimension mismatch', () => {
+		expect(() =>
+			averageChunksWeighted([
+				{ chunkIndex: 0, vector: [1, 2] },
+				{ chunkIndex: 1, vector: [1, 2, 3] },
+			]),
+		).toThrow('different dimensions');
 	});
 });

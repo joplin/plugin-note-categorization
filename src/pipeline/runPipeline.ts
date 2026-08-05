@@ -2,10 +2,11 @@ import { fetchAllNotes } from './noteReader';
 import { benchmark } from './clustering/benchmark';
 import { weightedAverageVectorsWithNorm } from './vectorAggregator';
 import { PanelNote } from '../types/panel';
+import { MetricType } from '../types/cluster';
 import { log, logErr } from '../utils/logger';
 import { VectorCache } from './vectorCache';
 import { isNativeAiReady, fetchNativeEmbeddings } from './nativeEmbeddingPipeline';
-import { DEFAULT_CONFIG, isValidEmbeddingVector, createAdaptiveConfig } from './pipelineConfig';
+import { createPipelineConfig, isValidEmbeddingVector, createAdaptiveConfig } from './pipelineConfig';
 import { enrichResultsWithTags } from './clustering/postProcess';
 import { upgradeClusterNamesWithAi } from './clustering/aiNamingService';
 import { EmbeddingWorkerOrchestrator } from './EmbeddingWorkerOrchestrator';
@@ -43,6 +44,11 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 			callbacks.onError('Too few notes for clustering (need at least 3).');
 			return;
 		}
+
+		// Pipeline configuration defaults (Cosine metric for text embeddings, seed 42 for reproducibility)
+		const userMetric: MetricType = 'cosine';
+		const userSeed = 42;
+		log(`Pipeline settings: metric="${userMetric}", seed=${userSeed}`);
 
 		if (await isNativeAiReady()) {
 			log('Native AI Search active: using native embeddings pipeline');
@@ -97,7 +103,12 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 					log('Too few indexed notes found in native DB. Falling back to local ONNX Web Worker.');
 				} else {
 					callbacks.onStatus('Clustering...');
-					const adaptiveConfig = createAdaptiveConfig(nativeResult.dimension, validNotes.length);
+					const adaptiveConfig = createAdaptiveConfig(
+						nativeResult.dimension,
+						validNotes.length,
+						userMetric,
+						userSeed,
+					);
 					const results = benchmark(vectors, adaptiveConfig);
 
 					// Post-process to extract tags/keywords for each cluster (keep parity with local pipeline)
@@ -172,7 +183,8 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 		}
 
 		const vectors = noteVectors.map((nv) => nv.vector);
-		const results = benchmark(vectors, DEFAULT_CONFIG);
+		const pipelineConfig = createPipelineConfig(userMetric, userSeed);
+		const results = benchmark(vectors, pipelineConfig);
 
 		// Post-process to extract tags/keywords for each cluster
 		const notesMap = new Map(notes.map((n) => [n.id, n]));

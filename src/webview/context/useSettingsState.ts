@@ -1,25 +1,23 @@
 import * as React from 'react';
 
 interface SettingsResponse {
-	'categorization.metric': string;
 	'categorization.parentNotebook': string;
 	'categorization.changeLog': string;
 }
 
 export function useSettingsState() {
 	const [settings, setSettings] = React.useState({
-		metric: 'cosine',
 		parentNotebook: '',
 		changeLog: '',
 	});
 
 	const fetchSettings = React.useCallback(async () => {
 		try {
+			if (typeof webviewApi === 'undefined') return;
 			const res = await webviewApi.postMessage({ type: 'getSettings' });
 			if (res) {
 				const data = res as unknown as SettingsResponse;
 				setSettings({
-					metric: data['categorization.metric'] || 'cosine',
 					parentNotebook: data['categorization.parentNotebook'] || '',
 					changeLog: data['categorization.changeLog'] || '',
 				});
@@ -31,6 +29,7 @@ export function useSettingsState() {
 
 	const updateSetting = React.useCallback(async (key: string, value: string) => {
 		try {
+			if (typeof webviewApi === 'undefined') return;
 			await webviewApi.postMessage({
 				type: 'updateSetting',
 				key,
