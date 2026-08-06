@@ -1,7 +1,7 @@
 import joplin from 'api';
 import { SettingItemType as SettingType } from 'api/types';
 import { log } from '../utils/logger';
-import { undoCategorizationChanges, cleanUpEmptyNotebooks } from '../commands/applyChanges';
+import { undoCategorizationChanges } from '../commands/applyChanges';
 
 export interface OperationState {
 	inProgress: boolean;
@@ -30,34 +30,6 @@ export async function runNativeUndo(source: string, operationState: OperationSta
 		}
 	} catch (err) {
 		await joplin.views.dialogs.showMessageBox(`Undo failed: ${err instanceof Error ? err.message : String(err)}`);
-	} finally {
-		operationState.inProgress = false;
-	}
-}
-
-export async function runNativeCleanup(source: string, operationState: OperationState): Promise<void> {
-	if (operationState.inProgress) {
-		await joplin.views.dialogs.showMessageBox(OP_IN_PROGRESS_MSG);
-		return;
-	}
-	operationState.inProgress = true;
-	try {
-		let lastMessage = '';
-		await cleanUpEmptyNotebooks((state) => {
-			log(`Native ${source} Cleanup: ${'text' in state ? state.text : state.type}`);
-			if (state.type === 'cleanup_complete') {
-				lastMessage = state.message;
-			} else if (state.type === 'cleanup_error') {
-				lastMessage = `Cleanup Error: ${state.message}`;
-			}
-		});
-		if (lastMessage) {
-			await joplin.views.dialogs.showMessageBox(lastMessage);
-		}
-	} catch (err) {
-		await joplin.views.dialogs.showMessageBox(
-			`Cleanup failed: ${err instanceof Error ? err.message : String(err)}`,
-		);
 	} finally {
 		operationState.inProgress = false;
 	}
@@ -105,15 +77,6 @@ export async function registerPluginSettings(operationState: OperationState): Pr
 				description:
 					'Check this box and click Apply/OK to revert note movements and tags from the previous run.',
 			},
-			'categorization.cleanUpAction': {
-				value: false,
-				type: SettingType.Bool,
-				section: 'aiCategorization',
-				public: true,
-				label: 'Clean Up Empty Notebooks',
-				description:
-					'Check this box and click Apply/OK to check for and remove empty notebooks leftover after note moves.',
-			},
 		});
 
 		// Handle native options checkbox triggers
@@ -124,14 +87,6 @@ export async function registerPluginSettings(operationState: OperationState): Pr
 					await joplin.settings.setValue('categorization.undoAction', false);
 					log('Native Settings: triggering undoCategorizationChanges');
 					await runNativeUndo('Settings', operationState);
-				}
-			}
-			if (event.keys.includes('categorization.cleanUpAction')) {
-				const val = await joplin.settings.value('categorization.cleanUpAction');
-				if (val) {
-					await joplin.settings.setValue('categorization.cleanUpAction', false);
-					log('Native Settings: triggering cleanUpEmptyNotebooks');
-					await runNativeCleanup('Settings', operationState);
 				}
 			}
 		});

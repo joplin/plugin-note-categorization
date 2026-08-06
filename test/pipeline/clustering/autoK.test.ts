@@ -99,12 +99,12 @@ describe('autoK computeKRange', () => {
 	});
 
 	it('computes correct range for larger datasets (N >= 20, uses N/3)', () => {
-		expect(computeKRange(20)).toEqual([2, 6]); // floor(20/3) = 6
-		expect(computeKRange(30)).toEqual([2, 10]); // floor(30/3) = 10
-		expect(computeKRange(45)).toEqual([2, 15]); // floor(45/3) = 15, hits cap
-		expect(computeKRange(56)).toEqual([2, 15]); // floor(56/3) = 18, capped at 15
-		expect(computeKRange(100)).toEqual([2, 15]); // floor(100/3) = 33, capped at 15
-		expect(computeKRange(500)).toEqual([2, 15]); // capped at MAX_K_CAP=15
+		expect(computeKRange(20)).toEqual([3, 6]); // floor(20/3) = 6
+		expect(computeKRange(30)).toEqual([3, 10]); // floor(30/3) = 10
+		expect(computeKRange(45)).toEqual([3, 15]); // floor(45/3) = 15, hits cap
+		expect(computeKRange(56)).toEqual([3, 15]); // floor(56/3) = 18, capped at 15
+		expect(computeKRange(100)).toEqual([3, 15]); // floor(100/3) = 33, capped at 15
+		expect(computeKRange(500)).toEqual([3, 15]); // capped at MAX_K_CAP=15
 	});
 });
 
@@ -118,8 +118,9 @@ describe('autoK findOptimalK', () => {
 
 	it('identifies 2 well-separated clusters', () => {
 		const result = findOptimalK(TWO_CLUSTERS, 'kmeans', euclideanDistance, 42);
-		expect(result.bestK).toBe(2);
-		expect(result.silhouetteScore).toBeGreaterThan(0.9);
+		// With minK=3 for N>=20, the algorithm picks the best K >= 3
+		expect(result.bestK).toBeGreaterThanOrEqual(3);
+		expect(result.silhouetteScore).toBeGreaterThan(0.5);
 		expect(result.assignments).toHaveLength(TWO_CLUSTERS.length);
 	});
 

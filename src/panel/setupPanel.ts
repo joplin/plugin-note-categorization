@@ -3,7 +3,7 @@ import { runPipeline } from '../pipeline/runPipeline';
 import { PanelMessage, WebviewMessage, PanelNote } from '../types/panel';
 import { BenchmarkResult } from '../types/cluster';
 import { log } from '../utils/logger';
-import { applyCategorizationChanges, undoCategorizationChanges, cleanUpEmptyNotebooks } from '../commands/applyChanges';
+import { applyCategorizationChanges, undoCategorizationChanges } from '../commands/applyChanges';
 import { OperationState } from '../settings/registerSettings';
 
 export async function setupPanel(operationState: OperationState): Promise<string> {
@@ -124,24 +124,6 @@ export async function setupPanel(operationState: OperationState): Promise<string
 					.catch((err) => {
 						log('Error in undo background task: ' + err);
 						panelState = { type: 'undo_error', message: err.message || String(err) };
-					})
-					.finally(() => {
-						operationState.inProgress = false;
-					});
-				return panelState;
-
-			case 'cleanUpEmptyNotebooks':
-				if (operationState.inProgress) {
-					return { type: 'cleanup_error', message: 'Another operation is already in progress.' };
-				}
-				operationState.inProgress = true;
-				panelState = { type: 'cleanup_status', text: 'Checking empty notebooks...' };
-				cleanUpEmptyNotebooks((state) => {
-					panelState = state;
-				})
-					.catch((err) => {
-						log('Error in cleanup background task: ' + err);
-						panelState = { type: 'cleanup_error', message: err.message || String(err) };
 					})
 					.finally(() => {
 						operationState.inProgress = false;

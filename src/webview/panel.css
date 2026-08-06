@@ -67,8 +67,7 @@ body {
 /* BUTTONS — Secondary (ghost) */
 
 .btn-run,
-.btn-undo,
-.btn-cleanup {
+.btn-undo {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -87,29 +86,25 @@ body {
 }
 
 .btn-run:hover,
-.btn-undo:hover,
-.btn-cleanup:hover {
+.btn-undo:hover {
 	background: color-mix(in srgb, var(--joplin-color) 5%, var(--joplin-background-color));
 	border-color: color-mix(in srgb, var(--joplin-color) 18%, var(--joplin-divider-color));
 }
 
 .btn-run:active,
-.btn-undo:active,
-.btn-cleanup:active {
+.btn-undo:active {
 	background: color-mix(in srgb, var(--joplin-color) 8%, var(--joplin-background-color));
 }
 
 .btn-run:disabled,
-.btn-undo:disabled,
-.btn-cleanup:disabled {
+.btn-undo:disabled {
 	opacity: 0.35;
 	cursor: not-allowed;
 	pointer-events: none;
 }
 
 .btn-run svg,
-.btn-undo svg,
-.btn-cleanup svg {
+.btn-undo svg {
 	opacity: 0.6;
 }
 
@@ -635,15 +630,6 @@ body {
 	font-weight: 600;
 }
 
-.cleanup-note {
-	font-size: 0.75em;
-	opacity: 0.4;
-	line-height: 1.4;
-	margin-top: 4px;
-	border-top: 1px solid var(--joplin-divider-color);
-	padding-top: 8px;
-}
-
 /* SETTINGS PAGE */
 
 .settings-container {
@@ -754,7 +740,6 @@ body {
 .btn-run:focus-visible,
 .btn-apply-primary:focus-visible,
 .btn-undo:focus-visible,
-.btn-cleanup:focus-visible,
 .strategy-select:focus-visible,
 .nav-tab:focus-visible {
 	outline: 2px solid color-mix(in srgb, var(--joplin-color) 40%, transparent);

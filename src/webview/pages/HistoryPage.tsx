@@ -3,19 +3,7 @@ import { useAppState } from '../context/AppStateContext';
 import type { ChangeLogEntry } from '../../commands/applyChanges';
 
 export const HistoryPage: React.FC = () => {
-	const {
-		settings,
-		hasChangeLog,
-		isUndoing,
-		undoProgress,
-		undoError,
-		undoSuccess,
-		undoChanges,
-		isCleaningUp,
-		cleanupError,
-		cleanupSuccess,
-		cleanUpNotebooks,
-	} = useAppState();
+	const { settings, hasChangeLog, isUndoing, undoProgress, undoError, undoSuccess, undoChanges } = useAppState();
 
 	let logDetails: ChangeLogEntry | null = null;
 	if (hasChangeLog && settings.changeLog) {
@@ -48,24 +36,9 @@ export const HistoryPage: React.FC = () => {
 						</div>
 					</div>
 
-					<button className="btn-undo" onClick={undoChanges} disabled={isUndoing || isCleaningUp}>
+					<button className="btn-undo" onClick={undoChanges} disabled={isUndoing}>
 						{isUndoing ? 'Undoing changes...' : 'Undo Last Categorization'}
 					</button>
-
-					<button
-						className="btn-cleanup"
-						onClick={cleanUpNotebooks}
-						disabled={isUndoing || isCleaningUp}
-						style={{ marginTop: '8px' }}
-					>
-						{isCleaningUp ? 'Cleaning up...' : 'Clean Up Empty Original Notebooks'}
-					</button>
-
-					<div className="cleanup-note">
-						<strong>Note:</strong> Cleaning up empty original notebooks will delete previous notebooks that
-						became empty. Reverting changes after this will place restored notes in your default notebook
-						folder.
-					</div>
 
 					{isUndoing && (
 						<div className="status-banner-apply info">
@@ -73,17 +46,9 @@ export const HistoryPage: React.FC = () => {
 						</div>
 					)}
 
-					{isCleaningUp && (
-						<div className="status-banner-apply info">Checking & cleaning up empty notebooks...</div>
-					)}
-
 					{undoSuccess && <div className="status-banner-apply success">Reverted changes successfully!</div>}
 
-					{cleanupSuccess && <div className="status-banner-apply success">{cleanupSuccess}</div>}
-
 					{undoError && <div className="status-banner-apply error">Error: {undoError}</div>}
-
-					{cleanupError && <div className="status-banner-apply error">Error: {cleanupError}</div>}
 				</div>
 			) : (
 				<div className="empty-state">
@@ -112,14 +77,6 @@ export const HistoryPage: React.FC = () => {
 							style={{ marginTop: '16px', width: '100%', maxWidth: '320px' }}
 						>
 							Reverted changes successfully!
-						</div>
-					)}
-					{cleanupSuccess && (
-						<div
-							className="status-banner-apply success"
-							style={{ marginTop: '16px', width: '100%', maxWidth: '320px' }}
-						>
-							{cleanupSuccess}
 						</div>
 					)}
 				</div>
