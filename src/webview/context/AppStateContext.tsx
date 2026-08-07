@@ -136,8 +136,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 					setStrategies(msg.strategies || []);
 					setNotes(msg.notes || []);
 					const nonTestingIdx = (msg.strategies || []).findIndex(
-						(s: BenchmarkResult) =>
-							!s.strategyName.startsWith('kmeans') && !s.strategyName.startsWith('kmedoids'),
+						(s: BenchmarkResult) => !s.strategyName.startsWith('kmeans'),
 					);
 					const fallbackIdx = nonTestingIdx !== -1 ? nonTestingIdx : 0;
 					setSelectedStrategyIndex(msg.selectedStrategyIndex ?? fallbackIdx);

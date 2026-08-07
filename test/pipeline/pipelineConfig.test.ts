@@ -74,7 +74,7 @@ describe('adaptive scaling functions', () => {
 		expect(config.metric).toBe('cosine');
 		expect(config.intermediateDim).toBe(19);
 		expect(config.intermediateNeighbors).toBe(10);
-		expect(config.strategies.length).toBe(3);
+		expect(config.strategies.length).toBe(2);
 	});
 });
 
@@ -84,10 +84,9 @@ describe('DEFAULT_CONFIG', () => {
 		expect(DEFAULT_CONFIG.seed).toBe(42);
 	});
 
-	it('includes kmeans, kmedoids, and hdbscan strategies', () => {
+	it('includes kmeans and hdbscan strategies', () => {
 		const names = DEFAULT_CONFIG.strategies.map((s) => s.algorithm);
 		expect(names).toContain('kmeans');
-		expect(names).toContain('kmedoids');
 		expect(names).toContain('hdbscan');
 	});
 });
