@@ -1,3 +1,10 @@
+/**
+ * NOTE: kmedoids is NOT currently used in the default pipeline strategies.
+ * It was removed due to prohibitively high runtime (~38s for ~500 notes)
+ * compared to kmeans and hdbscan. The implementation is retained here for
+ * potential future use or manual benchmarking.
+ */
+
 import { DistanceFn } from './metrics';
 import { mulberry32 } from '../../utils/prng';
 

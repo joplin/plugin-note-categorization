@@ -3,7 +3,7 @@
 An on-device AI plugin for Joplin that semantically clusters notes, suggests tags and notebook structures, and detects stale/archivable notes.
 
 > [!NOTE]
-> This plugin is under active development as part of GSoC 2026. The embedding pipeline, clustering (K-Means, K-Medoids, HDBSCAN), and an interactive UI panel are implemented. Settings customization and staleness analysis are upcoming features.
+> This plugin is under active development as part of GSoC 2026. The embedding pipeline, clustering (K-Means, HDBSCAN), and an interactive UI panel are implemented. Settings customization and staleness analysis are upcoming features.
 
 ---
 
@@ -29,7 +29,7 @@ The plugin implements a background-threaded embedding pipeline:
 
 - **Embedding Pipeline**: On-device embedding generation with WebGPU acceleration and WASM fallback
 - **Native AI Integration**: Automatically uses Joplin's built-in AI Search embeddings when available
-- **Multi-Strategy Clustering**: Compare K-Means, K-Medoids, and HDBSCAN results side-by-side
+- **Multi-Strategy Clustering**: Compare K-Means and HDBSCAN results side-by-side
 - **Interactive Panel**: Drag-and-drop notes between clusters, rename clusters, add custom categories
 - **Apply Categorization**: Organize notes into notebooks and/or tags based on clustering results
 - **Undo Support**: Revert any applied categorization with full change tracking

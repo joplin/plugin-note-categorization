@@ -42,7 +42,6 @@ export function createAdaptiveConfig(
 		intermediateNeighbors: adaptiveNeighbors(noteCount),
 		strategies: [
 			{ name: 'kmeans-auto', algorithm: 'kmeans', K: 'auto' },
-			{ name: 'kmedoids-auto', algorithm: 'kmedoids', K: 'auto' },
 			{ name: 'hdbscan', algorithm: 'hdbscan', minClusterSize: 3, minSamples: 2 },
 		],
 	};
@@ -56,7 +55,6 @@ export function createPipelineConfig(metric: MetricType = 'cosine', seed = 42): 
 		intermediateNeighbors: 5,
 		strategies: [
 			{ name: 'kmeans-auto', algorithm: 'kmeans', K: 'auto' },
-			{ name: 'kmedoids-auto', algorithm: 'kmedoids', K: 'auto' },
 			{ name: 'hdbscan', algorithm: 'hdbscan', minClusterSize: 3, minSamples: 2 },
 		],
 	};

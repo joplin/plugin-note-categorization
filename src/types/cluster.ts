@@ -1,10 +1,11 @@
+// NOTE: 'kmedoids' is kept in the type for compatibility but is not used in the default pipeline strategies (too slow)
 export type ClusteringAlgorithm = 'kmeans' | 'kmedoids' | 'hdbscan';
 
 export interface ClusteringStrategy {
 	/** Human-readable label for this run, e.g. 'kmeans-5' */
 	name: string;
 	algorithm: ClusteringAlgorithm;
-	/** Number of clusters (kmeans / kmedoids). Use 'auto' for automatic selection via silhouette sweep. */
+	/** Number of clusters (kmeans / kmedoids). Use 'auto' for automatic selection via silhouette sweep. Note: kmedoids is not active in the default pipeline. */
 	K?: number | 'auto';
 	/** Minimum points to form a cluster (hdbscan, default: 3) */
 	minClusterSize?: number;

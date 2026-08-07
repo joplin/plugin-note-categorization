@@ -14,8 +14,6 @@ function getStrategyDisplayName(name: string, isHighest: boolean): string {
 		baseName = 'HDBSCAN';
 	} else if (name.startsWith('kmeans')) {
 		baseName = 'K-Means (Testing)';
-	} else if (name.startsWith('kmedoids')) {
-		baseName = 'K-Medoids (Testing)';
 	}
 
 	if (isHighest) {
@@ -63,7 +61,7 @@ export const StrategySection: React.FC<StrategySectionProps> = ({
 			<div className="strategy-pills">
 				{strategies
 					.map((s, idx) => ({ s, idx }))
-					.filter(({ s }) => !s.strategyName.startsWith('kmeans') && !s.strategyName.startsWith('kmedoids'))
+					.filter(({ s }) => !s.strategyName.startsWith('kmeans'))
 					.map(({ s, idx }) => (
 						<span key={idx} className={`strategy-pill${idx === selectedStrategyIndex ? ' active' : ''}`}>
 							{getStrategyDisplayName(s.strategyName, false)}: {s.silhouetteScore.toFixed(2)}

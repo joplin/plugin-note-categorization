@@ -1,6 +1,7 @@
 import { CategorizationConfig, BenchmarkResult, ClusteringStrategy } from '../../types/cluster';
 import { DistanceFn, getDistanceFn, silhouetteScore, euclideanDistance } from './metrics';
 import { kmeans } from './kmeans';
+// NOTE: kmedoids is not used in the default pipeline (too slow), but kept here for manual benchmarking
 import { kmedoids } from './kmedoids';
 import { hdbscan } from './hdbscan';
 import { findOptimalK } from './autoK';
@@ -25,7 +26,7 @@ export function runStrategy(
 	switch (strategy.algorithm) {
 		case 'kmeans':
 			return kmeans(vectors, strategy.K ?? DEFAULT_K, distFn, seed);
-		case 'kmedoids':
+		case 'kmedoids': // NOTE: not used in default pipeline strategies (too slow)
 			return kmedoids(vectors, strategy.K ?? DEFAULT_K, distFn, seed);
 		case 'hdbscan':
 			return hdbscan(vectors, strategy.minClusterSize ?? DEFAULT_MIN_CLUSTER_SIZE, strategy.minSamples, distFn);

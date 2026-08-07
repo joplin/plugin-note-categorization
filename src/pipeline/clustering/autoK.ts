@@ -1,5 +1,6 @@
 import { DistanceFn, silhouetteScore } from './metrics';
 import { kmeans } from './kmeans';
+// NOTE: kmedoids is not used in the default pipeline (too slow), but kept here for manual benchmarking
 import { kmedoids } from './kmedoids';
 import { log } from '../../utils/logger';
 
@@ -87,7 +88,7 @@ export function computeKRange(n: number): [number, number] {
  * produces more useful note categories.
  *
  * @param vectors    Input data points (N x D), already UMAP-reduced if applicable
- * @param algorithm  Which algorithm to use: 'kmeans' or 'kmedoids'
+ * @param algorithm  Which algorithm to use: 'kmeans' or 'kmedoids' (note: kmedoids is not used in the default pipeline)
  * @param distFn     Distance function (cosine or euclidean)
  * @param seed       Seed for reproducible initialization
  * @returns          The optimal K, its assignments, and its silhouette score
