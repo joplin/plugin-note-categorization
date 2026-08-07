@@ -9,7 +9,7 @@ import {
 	deleteCreatedTags,
 } from './applyTags';
 import {
-	fetchExistingFolders,
+	fetchAllFolders,
 	initializeClusterNotebooks,
 	moveNoteToFolder,
 	restoreNotebook,
@@ -23,6 +23,8 @@ export interface ChangeLogEntry {
 	notes: {
 		noteId: string;
 		originalParentId?: string;
+		originalParentTitle?: string;
+		originalParentGrandparentId?: string;
 		addedTagId?: string;
 		addedTagIds?: string[];
 	}[];
@@ -60,7 +62,7 @@ export async function applyCategorizationChanges(
 
 		// Fetch existing items using modular helpers
 		const existingTagsMap = await fetchExistingTags();
-		const existingFoldersMap = await fetchExistingFolders();
+		const { byKey: existingFoldersMap, byId: allFoldersById } = await fetchAllFolders();
 
 		const uniqueClusterIds = Array.from(new Set(assignments.filter((id) => id >= 0)));
 
@@ -95,6 +97,8 @@ export async function applyCategorizationChanges(
 		const changeLogNotes: {
 			noteId: string;
 			originalParentId?: string;
+			originalParentTitle?: string;
+			originalParentGrandparentId?: string;
 			addedTagId?: string;
 			addedTagIds?: string[];
 		}[] = [];
@@ -106,6 +110,8 @@ export async function applyCategorizationChanges(
 			const changeEntry: {
 				noteId: string;
 				originalParentId?: string;
+				originalParentTitle?: string;
+				originalParentGrandparentId?: string;
 				addedTagId?: string;
 				addedTagIds?: string[];
 			} = {
@@ -167,6 +173,13 @@ export async function applyCategorizationChanges(
 				);
 				if (folderResult.modified) {
 					changeEntry.originalParentId = folderResult.originalParentId;
+					const folderInfo = folderResult.originalParentId
+						? allFoldersById.get(folderResult.originalParentId)
+						: undefined;
+					if (folderInfo) {
+						changeEntry.originalParentTitle = folderInfo.title;
+						changeEntry.originalParentGrandparentId = folderInfo.parent_id;
+					}
 					modified = true;
 				}
 			}
@@ -193,6 +206,20 @@ export async function applyCategorizationChanges(
 		await joplin.settings.setValue('categorization.changeLog', JSON.stringify(changeLogEntry));
 		await joplin.settings.setValue('categorization.changeLogSummary', formatChangeLogSummary(changeLogEntry));
 
+		if (options.method === 'notebooks' || options.method === 'both') {
+			setPanelState({ type: 'apply_status', text: 'Cleaning up empty original notebooks...' });
+			const originalParentIds = new Set<string>();
+			for (const note of changeLogNotes) {
+				if (note.originalParentId) {
+					originalParentIds.add(note.originalParentId);
+				}
+			}
+			if (originalParentIds.size > 0) {
+				const deletedCount = await cleanUpFolders(originalParentIds);
+				log(`Auto-cleanup: removed ${deletedCount} empty notebook(s)`);
+			}
+		}
+
 		setPanelState({ type: 'apply_complete' });
 	} catch (err) {
 		log('Error in applyCategorizationChanges: ' + err);
@@ -214,6 +241,26 @@ export async function undoCategorizationChanges(setPanelState: (state: PanelMess
 
 		const changeLog: ChangeLogEntry = JSON.parse(changeLogStr);
 		const total = changeLog.notes.length;
+		const recreatedFolderMap = new Map<string, string>();
+
+		// Batch-check which original parent folders still exist
+		const uniqueParentIds = new Set<string>();
+		for (const entry of changeLog.notes) {
+			if (entry.originalParentId) {
+				uniqueParentIds.add(entry.originalParentId);
+			}
+		}
+		const missingFolderIds = new Set<string>();
+		for (const folderId of uniqueParentIds) {
+			try {
+				const folder = await joplin.data.get(['folders', folderId], { fields: ['id', 'deleted_time'] });
+				if (folder.deleted_time) {
+					await joplin.data.put(['folders', folderId], null, { deleted_time: 0 });
+				}
+			} catch {
+				missingFolderIds.add(folderId);
+			}
+		}
 
 		// 1. Restore parent notebooks and remove tag associations from notes
 		for (let i = 0; i < total; i++) {
@@ -231,7 +278,14 @@ export async function undoCategorizationChanges(setPanelState: (state: PanelMess
 
 			// Restore parent notebook
 			if (entry.originalParentId) {
-				await restoreNotebook(entry.noteId, entry.originalParentId);
+				await restoreNotebook(
+					entry.noteId,
+					entry.originalParentId,
+					entry.originalParentTitle,
+					entry.originalParentGrandparentId,
+					recreatedFolderMap,
+					missingFolderIds.has(entry.originalParentId),
+				);
 			}
 
 			setPanelState({
@@ -262,44 +316,6 @@ export async function undoCategorizationChanges(setPanelState: (state: PanelMess
 		log('Error in undoCategorizationChanges: ' + err);
 		setPanelState({
 			type: 'undo_error',
-			message: err instanceof Error ? err.message : String(err),
-		});
-	}
-}
-
-export async function cleanUpEmptyNotebooks(setPanelState: (state: PanelMessage) => void) {
-	try {
-		setPanelState({ type: 'cleanup_status', text: 'Checking empty notebooks...' });
-
-		const changeLogStr = await joplin.settings.value('categorization.changeLog');
-		if (!changeLogStr) {
-			throw new Error('No active categorization history found.');
-		}
-		const changeLog: ChangeLogEntry = JSON.parse(changeLogStr);
-
-		// Get all unique original parent IDs
-		const originalParentIds = new Set<string>();
-		for (const note of changeLog.notes) {
-			if (note.originalParentId) {
-				originalParentIds.add(note.originalParentId);
-			}
-		}
-
-		if (originalParentIds.size === 0) {
-			setPanelState({ type: 'cleanup_complete', message: 'No original notebooks to clean up.' });
-			return;
-		}
-
-		const deletedCount = await cleanUpFolders(originalParentIds);
-
-		setPanelState({
-			type: 'cleanup_complete',
-			message: `Cleaned up ${deletedCount} empty original notebook(s) successfully!`,
-		});
-	} catch (err) {
-		log('Error in cleanUpEmptyNotebooks: ' + err);
-		setPanelState({
-			type: 'cleanup_error',
 			message: err instanceof Error ? err.message : String(err),
 		});
 	}

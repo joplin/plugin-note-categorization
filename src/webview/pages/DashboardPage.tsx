@@ -21,7 +21,6 @@ export const DashboardPage: React.FC = () => {
 		applySuccess,
 		applyChanges,
 		isUndoing,
-		isCleaningUp,
 		settings,
 	} = useAppState();
 
@@ -76,7 +75,7 @@ export const DashboardPage: React.FC = () => {
 	};
 
 	const handleApply = () => {
-		if (applySuccess || isApplying || isUndoing || isCleaningUp) {
+		if (applySuccess || isApplying || isUndoing) {
 			return;
 		}
 		applyChanges({
@@ -181,7 +180,7 @@ export const DashboardPage: React.FC = () => {
 						<button
 							className="btn-apply-primary"
 							onClick={handleApply}
-							disabled={isApplying || isUndoing || isCleaningUp || applySuccess}
+							disabled={isApplying || isUndoing || applySuccess}
 						>
 							{isApplying
 								? 'Applying changes...'

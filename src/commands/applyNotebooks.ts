@@ -7,7 +7,10 @@ interface JoplinFolder {
 	parent_id: string;
 }
 
-export async function fetchExistingFolders(): Promise<Map<string, string>> {
+export async function fetchAllFolders(): Promise<{
+	byKey: Map<string, string>;
+	byId: Map<string, { title: string; parent_id: string }>;
+}> {
 	const allFoldersList: JoplinFolder[] = [];
 	let folderPage = 1;
 	const MAX_PAGES = 500;
@@ -21,9 +24,14 @@ export async function fetchExistingFolders(): Promise<Map<string, string>> {
 		if (!res.has_more) break;
 		folderPage++;
 	}
-	return new Map<string, string>(
-		allFoldersList.map((f) => [`${f.title.toLowerCase()}\x1F${f.parent_id || ''}`, f.id]),
-	);
+	return {
+		byKey: new Map<string, string>(
+			allFoldersList.map((f) => [`${f.title.toLowerCase()}\x1F${f.parent_id || ''}`, f.id]),
+		),
+		byId: new Map<string, { title: string; parent_id: string }>(
+			allFoldersList.map((f) => [f.id, { title: f.title, parent_id: f.parent_id || '' }]),
+		),
+	};
 }
 
 export async function getOrCreateFolder(
@@ -119,11 +127,44 @@ export async function moveNoteToFolder(
 	return { modified: false };
 }
 
-export async function restoreNotebook(noteId: string, originalParentId: string) {
+export async function restoreNotebook(
+	noteId: string,
+	originalParentId: string,
+	originalParentTitle?: string,
+	originalParentGrandparentId?: string,
+	recreatedFolderMap?: Map<string, string>,
+	folderMissing = false,
+): Promise<void> {
+	if (!folderMissing) {
+		try {
+			await joplin.data.put(['notes', noteId], null, { parent_id: originalParentId });
+			return;
+		} catch (folderErr) {
+			log(`Undo: restoring folder ${originalParentId} failed for note ${noteId}: ${folderErr}`);
+		}
+	}
+
+	if (!originalParentTitle || !recreatedFolderMap) {
+		if (folderMissing) {
+			log(`Undo: folder ${originalParentId} missing for note ${noteId} but no title available to recreate`);
+		}
+		return;
+	}
+
 	try {
-		await joplin.data.put(['notes', noteId], null, { parent_id: originalParentId });
-	} catch (folderErr) {
-		log(`Undo: restoring folder ${originalParentId} failed for note ${noteId}: ${folderErr}`);
+		const cacheKey = `${originalParentTitle}\x1F${originalParentGrandparentId || ''}`;
+		let newFolderId = recreatedFolderMap.get(cacheKey);
+		if (!newFolderId) {
+			const created = await joplin.data.post(['folders'], null, {
+				title: originalParentTitle,
+				parent_id: originalParentGrandparentId || undefined,
+			});
+			newFolderId = created.id as string;
+			recreatedFolderMap.set(cacheKey, newFolderId);
+		}
+		await joplin.data.put(['notes', noteId], null, { parent_id: newFolderId });
+	} catch (recreateErr) {
+		log(`Undo: failed to recreate folder '${originalParentTitle}' for note ${noteId}: ${recreateErr}`);
 	}
 }
 

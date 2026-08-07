@@ -1,7 +1,7 @@
 import joplin from 'api';
 import { MenuItemLocation, ToolbarButtonLocation } from 'api/types';
 import { log } from '../utils/logger';
-import { runNativeUndo, runNativeCleanup, OperationState } from '../settings/registerSettings';
+import { runNativeUndo, OperationState } from '../settings/registerSettings';
 
 export async function registerPluginCommands(operationState: OperationState, panelHandle: string): Promise<void> {
 	await joplin.commands.register({
@@ -11,16 +11,6 @@ export async function registerPluginCommands(operationState: OperationState, pan
 		execute: async () => {
 			log('Menu: triggering undoCategorizationChanges');
 			await runNativeUndo('Menu', operationState);
-		},
-	});
-
-	await joplin.commands.register({
-		name: 'aiCategorise.cleanUpEmptyNotebooks',
-		label: 'AI Categorise: Clean Up Empty Notebooks',
-		iconName: 'fas fa-broom',
-		execute: async () => {
-			log('Menu: triggering cleanUpEmptyNotebooks');
-			await runNativeCleanup('Menu', operationState);
 		},
 	});
 
@@ -37,12 +27,6 @@ export async function registerPluginCommands(operationState: OperationState, pan
 	await joplin.views.menuItems.create(
 		'aiCategorise.undoMenuItem',
 		'aiCategorise.undoLastCategorization',
-		MenuItemLocation.Tools,
-	);
-
-	await joplin.views.menuItems.create(
-		'aiCategorise.cleanUpMenuItem',
-		'aiCategorise.cleanUpEmptyNotebooks',
 		MenuItemLocation.Tools,
 	);
 

@@ -41,10 +41,7 @@ export type PanelMessage =
 	| { type: 'undo_status'; text: string }
 	| { type: 'undo_progress'; current: number; total: number }
 	| { type: 'undo_complete' }
-	| { type: 'undo_error'; message: string }
-	| { type: 'cleanup_status'; text: string }
-	| { type: 'cleanup_complete'; message: string }
-	| { type: 'cleanup_error'; message: string };
+	| { type: 'undo_error'; message: string };
 
 // Webview → Plugin
 export type WebviewMessage =
@@ -56,5 +53,4 @@ export type WebviewMessage =
 	| { type: 'getSettings' }
 	| { type: 'updateSetting'; key: string; value: string }
 	| ApplyMessage
-	| { type: 'undo' }
-	| { type: 'cleanUpEmptyNotebooks' };
+	| { type: 'undo' };

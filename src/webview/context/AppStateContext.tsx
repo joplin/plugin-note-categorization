@@ -46,12 +46,6 @@ interface AppStateContextType {
 	undoSuccess: boolean;
 	undoChanges: () => Promise<void>;
 	hasChangeLog: boolean;
-
-	// cleanup states
-	isCleaningUp: boolean;
-	cleanupError: string | null;
-	cleanupSuccess: string | null;
-	cleanUpNotebooks: () => Promise<void>;
 }
 
 const AppStateContext = React.createContext<AppStateContextType | undefined>(undefined);
@@ -79,13 +73,9 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 		undoProgress,
 		undoError,
 		undoSuccess,
-		isCleaningUp,
-		cleanupError,
-		cleanupSuccess,
 		resetApplyState,
 		applyChanges,
 		undoChanges,
-		cleanUpNotebooks,
 		setIsApplying,
 		setApplyProgress,
 		setApplyError,
@@ -94,9 +84,6 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 		setUndoProgress,
 		setUndoError,
 		setUndoSuccess,
-		setIsCleaningUp,
-		setCleanupError,
-		setCleanupSuccess,
 	} = useApplyState(() => startPolling());
 
 	// Initialize pipeline state hook
@@ -218,25 +205,6 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 					setIsUndoing(false);
 					setUndoError(msg.message || 'An unknown error occurred.');
 					break;
-
-				case 'cleanup_status':
-					setIsCleaningUp(true);
-					setCleanupError(null);
-					setCleanupSuccess(null);
-					break;
-
-				case 'cleanup_complete':
-					stopPolling();
-					setIsCleaningUp(false);
-					setCleanupSuccess(msg.message || 'Cleaned up empty notebooks.');
-					fetchSettings();
-					break;
-
-				case 'cleanup_error':
-					stopPolling();
-					setIsCleaningUp(false);
-					setCleanupError(msg.message || 'Failed to clean up folders.');
-					break;
 			}
 		},
 		[
@@ -258,9 +226,6 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 			setUndoProgress,
 			setUndoError,
 			setUndoSuccess,
-			setIsCleaningUp,
-			setCleanupError,
-			setCleanupSuccess,
 		],
 	);
 
@@ -358,10 +323,6 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 				undoSuccess,
 				undoChanges,
 				hasChangeLog,
-				isCleaningUp,
-				cleanupError,
-				cleanupSuccess,
-				cleanUpNotebooks,
 			}}
 		>
 			{children}

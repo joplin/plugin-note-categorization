@@ -12,17 +12,11 @@ export function useApplyState(startPolling: () => void) {
 	const [undoError, setUndoError] = React.useState<string | null>(null);
 	const [undoSuccess, setUndoSuccess] = React.useState(false);
 
-	const [isCleaningUp, setIsCleaningUp] = React.useState(false);
-	const [cleanupError, setCleanupError] = React.useState<string | null>(null);
-	const [cleanupSuccess, setCleanupSuccess] = React.useState<string | null>(null);
-
 	const resetApplyState = React.useCallback(() => {
 		setApplySuccess(false);
 		setApplyError(null);
 		setUndoSuccess(false);
 		setUndoError(null);
-		setCleanupSuccess(null);
-		setCleanupError(null);
 	}, []);
 
 	const applyChanges = React.useCallback(
@@ -38,8 +32,6 @@ export function useApplyState(startPolling: () => void) {
 			setApplySuccess(false);
 			setUndoSuccess(false);
 			setUndoError(null);
-			setCleanupSuccess(null);
-			setCleanupError(null);
 
 			try {
 				if (typeof webviewApi === 'undefined') {
@@ -71,8 +63,6 @@ export function useApplyState(startPolling: () => void) {
 		setUndoSuccess(false);
 		setApplySuccess(false);
 		setApplyError(null);
-		setCleanupSuccess(null);
-		setCleanupError(null);
 
 		try {
 			if (typeof webviewApi === 'undefined') {
@@ -88,29 +78,6 @@ export function useApplyState(startPolling: () => void) {
 		}
 	}, [startPolling]);
 
-	const cleanUpNotebooks = React.useCallback(async () => {
-		setIsCleaningUp(true);
-		setCleanupError(null);
-		setCleanupSuccess(null);
-		setApplySuccess(false);
-		setApplyError(null);
-		setUndoSuccess(false);
-		setUndoError(null);
-
-		try {
-			if (typeof webviewApi === 'undefined') {
-				setCleanupError('Joplin API not available');
-				setIsCleaningUp(false);
-				return;
-			}
-			await webviewApi.postMessage({ type: 'cleanUpEmptyNotebooks' });
-			startPolling();
-		} catch (err) {
-			setCleanupError('Failed to start cleanup: ' + String(err));
-			setIsCleaningUp(false);
-		}
-	}, [startPolling]);
-
 	return {
 		isApplying,
 		applyProgress,
@@ -120,13 +87,9 @@ export function useApplyState(startPolling: () => void) {
 		undoProgress,
 		undoError,
 		undoSuccess,
-		isCleaningUp,
-		cleanupError,
-		cleanupSuccess,
 		resetApplyState,
 		applyChanges,
 		undoChanges,
-		cleanUpNotebooks,
 		setIsApplying,
 		setApplyProgress,
 		setApplyError,
@@ -135,8 +98,5 @@ export function useApplyState(startPolling: () => void) {
 		setUndoProgress,
 		setUndoError,
 		setUndoSuccess,
-		setIsCleaningUp,
-		setCleanupError,
-		setCleanupSuccess,
 	};
 }

@@ -34,7 +34,8 @@ export interface AutoKResult {
 /**
  * Computes the K search range [minK, maxK] based on dataset size.
  *
- * - minK is always 2 (minimum for silhouette to be defined).
+ * - minK is 2 for small datasets (N < 20), 3 for larger ones (N >= 20).
+ *   For 20+ notes, 2 categories is too coarse to be useful.
  * - For small datasets (N < 20): maxK = floor(N / 2).
  *   Ensures the sweep can explore meaningful K values (e.g. N=8 → [2,4]).
  * - For larger datasets (N >= 20): maxK = floor(N / 3).
@@ -49,7 +50,7 @@ export interface AutoKResult {
 export function computeKRange(n: number): [number, number] {
 	if (n < 2) return [1, 1]; // degenerate: can't cluster at all
 
-	const minK = MIN_K;
+	const minK = n >= 20 ? 3 : MIN_K;
 	let maxK: number;
 
 	if (n < 20) {
