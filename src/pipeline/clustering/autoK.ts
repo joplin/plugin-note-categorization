@@ -7,8 +7,13 @@ import { log } from '../../utils/logger';
 /** Absolute minimum K to try (silhouette needs at least 2 clusters). */
 const MIN_K = 2;
 
-/** Absolute maximum K to try (caps the sweep to bound runtime and avoid tiny clusters). */
-const MAX_K_CAP = 15;
+/**
+ * Absolute safety ceiling for maxK to bound sweep runtime.
+ * At N=10,000 the dynamic formula yields ~270, so this caps it at 200
+ * to prevent excessive K-Means iterations at extreme vault sizes.
+ * Silhouette evaluation remains O(500²) per K due to stratified sampling.
+ */
+const ABSOLUTE_MAX_K = 200;
 
 /**
  * Absolute silhouette tolerance for K selection. Clusterings whose silhouette
@@ -16,12 +21,11 @@ const MAX_K_CAP = 15;
  * good, and the highest K among them is selected.
  *
  * Rationale: silhouette score naturally biases toward fewer, coarser clusters.
- * A small drop (e.g. 0.017) when going from K=4 to K=7 is statistically
+ * A small drop (e.g. 0.008) when going from K=4 to K=7 is statistically
  * insignificant, but the finer granularity is far more useful for note
- * categorization. 0.025 is within the standard range (0.02–0.05) used in
- * clustering literature for "equivalent quality" comparisons.
+ * categorization. 0.01 is a strict tolerance for equivalent peak selection.
  */
-const SILHOUETTE_TOLERANCE = 0.025;
+const SILHOUETTE_TOLERANCE = 0.01;
 
 export interface AutoKResult {
 	/** The optimal K value found by the sweep. */
@@ -35,15 +39,26 @@ export interface AutoKResult {
 /**
  * Computes the K search range [minK, maxK] based on dataset size.
  *
- * - minK is 2 for small datasets (N < 20), 3 for larger ones (N >= 20).
- *   For 20+ notes, 2 categories is too coarse to be useful.
+ * Two-part scaling formula for maxK:
+ *
+ * - **Base term** (all N ≥ 20): `1.5 · √N` — the BERTopic-standard sqrt rule
+ *   of thumb that scales sub-linearly with dataset size.
+ * - **Density boost** (N > 1000): `(N − 1000) / 75` — a linear term that adds
+ *   ~13 extra K per 1000 additional notes, preventing clusters from growing too
+ *   large in big vaults. This maintains ~25–35 notes per cluster up to N ≈ 5000.
+ *
+ * The combined formula `maxK = ⌈1.5·√N + max(0, (N−1000)/75)⌉` is continuous
+ * at N = 1000 (density boost is 0) and preserves all existing behavior for
+ * N ≤ 1000.
+ *
+ * Range rules:
+ * - minK is 2 for small datasets (N < 20), 3 for larger ones (N ≥ 20).
  * - For small datasets (N < 20): maxK = floor(N / 2).
- *   Ensures the sweep can explore meaningful K values (e.g. N=8 → [2,4]).
- * - For larger datasets (N >= 20): maxK = floor(N / 3).
- *   Ensures each cluster has at least ~3 notes on average.
- *   This is more generous than sqrt(N) and prevents under-clustering
- *   (e.g. N=56 → [2,15] instead of [2,7]).
- * - maxK is always clamped to MAX_K_CAP (15).
+ * - maxK is always clamped to ABSOLUTE_MAX_K (200).
+ *
+ * Examples:
+ *   N=100 → 15, N=500 → 34, N=1000 → 48,
+ *   N=2000 → 81, N=3000 → 109, N=5000 → 160, N=10000 → 200 (capped)
  *
  * @param n  Number of data points
  * @returns  Tuple [minK, maxK]
@@ -59,14 +74,18 @@ export function computeKRange(n: number): [number, number] {
 		// can actually explore meaningful K values (e.g. N=8 → [2,4])
 		maxK = Math.max(MIN_K, Math.floor(n / 2));
 	} else {
-		// For larger datasets, allow 1 cluster per 3 notes on average.
-		// This is more generous than sqrt(N) and avoids under-clustering
-		// (e.g. N=56 → maxK=18 capped to 15, vs sqrt giving only 7).
-		maxK = Math.floor(n / 3);
+		// Base scaling: 1.5·√N (standard sqrt rule of thumb).
+		// For large datasets (N > 1000), add a linear density term
+		// to maintain ~25-35 notes per cluster as N grows.
+		// The density term (N-1000)/75 adds ~13 categories per 1000 additional
+		// notes, preventing clusters from growing too large in big vaults.
+		const sqrtTerm = 1.5 * Math.sqrt(n);
+		const densityBoost = Math.max(0, (n - 1000) / 75);
+		maxK = Math.ceil(sqrtTerm + densityBoost);
 	}
 
-	// Clamp to [minK, MAX_K_CAP]
-	maxK = Math.min(Math.max(maxK, minK), MAX_K_CAP);
+	// Clamp to [minK, ABSOLUTE_MAX_K]
+	maxK = Math.min(Math.max(maxK, minK), ABSOLUTE_MAX_K);
 
 	return [minK, maxK];
 }

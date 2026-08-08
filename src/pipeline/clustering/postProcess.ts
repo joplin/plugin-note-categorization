@@ -30,14 +30,32 @@ export { toTitleCase, shareWords, getTaxonomyCategory, generateClusterName } fro
  * Builds the TF-IDF corpus from all pipeline documents once, then iterates
  * over each strategy result to extract the top tags and generated names per cluster.
  *
+ * This function is async to yield control to the event loop between strategies,
+ * allowing the Joplin panel to receive poll responses and update status messages.
+ *
  * @param results    Benchmark results from the clustering pipeline
  * @param documents  All note documents used in the pipeline (same order as noteVectors)
  * @param topK       Number of tags to extract per cluster (default: 5)
+ * @param onStatus   Optional callback to report progress to the UI
  */
-export function enrichResultsWithTags(results: BenchmarkResult[], documents: DocumentText[], topK = 5): void {
+export async function enrichResultsWithTags(
+	results: BenchmarkResult[],
+	documents: DocumentText[],
+	topK = 5,
+	onStatus?: (text: string) => void,
+): Promise<void> {
+	onStatus?.('Building topic index...');
+	// Yield so the status message can be delivered via poll before the CPU-intensive constructor runs
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
 	const tfidfExtractor = new TfidfExtractor(documents);
 
-	for (const result of results) {
+	for (let stratIdx = 0; stratIdx < results.length; stratIdx++) {
+		const result = results[stratIdx];
+		onStatus?.(`Extracting topics (strategy ${stratIdx + 1}/${results.length}: ${result.strategyName})...`);
+		// Yield so the UI can update before processing this strategy
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
 		const tags: { [clusterId: number]: string[] } = {};
 		const clusterNames: { [clusterId: number]: string } = {};
 
@@ -58,8 +76,8 @@ export function enrichResultsWithTags(results: BenchmarkResult[], documents: Doc
 			const clusterId = Number(clusterIdStr);
 			const indices = clusterIndices[clusterId];
 
-			const clusterDocuments = indices.map((idx) => documents[idx]);
-			const ngramScores = tfidfExtractor.extractClusterNgramsWithScores(clusterDocuments);
+			// Use index-based extraction (uses cached ngrams, no re-processing)
+			const ngramScores = tfidfExtractor.extractClusterNgramsByIndices(indices);
 			cachedScores[clusterId] = ngramScores;
 
 			tags[clusterId] = selectDedupedTags(ngramScores, topK);

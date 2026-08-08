@@ -156,7 +156,7 @@ export const DashboardPage: React.FC = () => {
 					</div>
 				)}
 
-				{selectedStrategy && (
+				{selectedStrategy && noise.length > 0 && (
 					<ClusterCard
 						title="Uncategorized"
 						noteIndices={noise}

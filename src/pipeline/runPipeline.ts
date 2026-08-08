@@ -103,6 +103,7 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 					log('Too few indexed notes found in native DB. Falling back to local ONNX Web Worker.');
 				} else {
 					callbacks.onStatus('Clustering...');
+					const clusterStart = performance.now();
 					const adaptiveConfig = createAdaptiveConfig(
 						nativeResult.dimension,
 						validNotes.length,
@@ -110,6 +111,7 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 						userSeed,
 					);
 					const results = benchmark(vectors, adaptiveConfig);
+					log(`Clustering (UMAP + benchmark): ${Math.round(performance.now() - clusterStart)}ms`);
 
 					// Post-process to extract tags/keywords for each cluster (keep parity with local pipeline)
 					const allPipelineDocuments = validNotes.map((n) => ({
@@ -117,10 +119,17 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 						body: n.body,
 					}));
 
-					enrichResultsWithTags(results, allPipelineDocuments);
+					callbacks.onStatus(
+						`Extracting topics for ${results.reduce((sum, r) => sum + r.clusterCount, 0)} clusters...`,
+					);
+					const enrichStart = performance.now();
+					await enrichResultsWithTags(results, allPipelineDocuments, 5, callbacks.onStatus);
+					log(`Topic extraction: ${Math.round(performance.now() - enrichStart)}ms`);
 
 					callbacks.onStatus('Generating AI cluster names...');
+					const aiStart = performance.now();
 					await upgradeClusterNamesWithAi(results, allPipelineDocuments);
+					log(`AI naming: ${Math.round(performance.now() - aiStart)}ms`);
 
 					const panelNotes: PanelNote[] = validNotes.map((n) => ({
 						noteId: n.id,
@@ -183,8 +192,10 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 		}
 
 		const vectors = noteVectors.map((nv) => nv.vector);
-		const pipelineConfig = createPipelineConfig(userMetric, userSeed);
+		const clusterStart = performance.now();
+		const pipelineConfig = createPipelineConfig(noteVectors.length, userMetric, userSeed);
 		const results = benchmark(vectors, pipelineConfig);
+		log(`Clustering (UMAP + benchmark): ${Math.round(performance.now() - clusterStart)}ms`);
 
 		// Post-process to extract tags/keywords for each cluster
 		const notesMap = new Map(notes.map((n) => [n.id, n]));
@@ -196,10 +207,15 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 			};
 		});
 
-		enrichResultsWithTags(results, allPipelineDocuments);
+		callbacks.onStatus(`Extracting topics for ${results.reduce((sum, r) => sum + r.clusterCount, 0)} clusters...`);
+		const enrichStart = performance.now();
+		await enrichResultsWithTags(results, allPipelineDocuments, 5, callbacks.onStatus);
+		log(`Topic extraction: ${Math.round(performance.now() - enrichStart)}ms`);
 
 		callbacks.onStatus('Generating AI cluster names...');
+		const aiStart = performance.now();
 		await upgradeClusterNamesWithAi(results, allPipelineDocuments);
+		log(`AI naming: ${Math.round(performance.now() - aiStart)}ms`);
 
 		const panelNotes: PanelNote[] = noteVectors.map((nv) => ({
 			noteId: nv.noteId,
