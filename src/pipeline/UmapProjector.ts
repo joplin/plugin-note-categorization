@@ -14,7 +14,7 @@ export class UmapProjector {
 	constructor(options: UmapProjectorOptions = {}) {
 		this.nComponents = options.nComponents ?? 2;
 		this.nNeighbors = options.nNeighbors ?? 15;
-		this.minDist = options.minDist ?? 0.1;
+		this.minDist = options.minDist ?? 0.0;
 		this.metric = options.metric ?? 'cosine';
 		this.seed = options.seed ?? 42;
 	}

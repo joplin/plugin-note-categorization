@@ -7,19 +7,33 @@ interface StrategySectionProps {
 	onStrategyChange: (index: number) => void;
 }
 
-/** Returns display names for dropdown and pills, marking testing and recommended strategies */
-function getStrategyDisplayName(name: string, isHighest: boolean): string {
-	let baseName = name;
+/** Returns clean display names for dropdown */
+function getStrategyDisplayName(name: string): string {
 	if (name === 'hdbscan') {
-		baseName = 'HDBSCAN';
+		return 'HDBSCAN';
 	} else if (name.startsWith('kmeans')) {
-		baseName = 'K-Means (Testing)';
+		return 'K-Means';
 	}
+	return name;
+}
 
-	if (isHighest) {
-		return `${baseName} (Recommended)`;
+/** Returns info badge title & description for each strategy */
+function getStrategyDetails(name: string): { tag: string; desc: string } {
+	if (name === 'hdbscan') {
+		return {
+			tag: 'Natural Discovery',
+			desc: 'Finds natural topic clusters and filters out unrelated notes. May leave some notes uncategorized.',
+		};
+	} else if (name.startsWith('kmeans')) {
+		return {
+			tag: 'Balanced Grouping',
+			desc: 'Categorizes 100% of notes into balanced clusters. May group loosely related topics together.',
+		};
 	}
-	return baseName;
+	return {
+		tag: 'Clustering',
+		desc: '',
+	};
 }
 
 export const StrategySection: React.FC<StrategySectionProps> = ({
@@ -34,6 +48,8 @@ export const StrategySection: React.FC<StrategySectionProps> = ({
 		onStrategyChange(parseInt(e.target.value, 10));
 	};
 
+	const details = getStrategyDetails(selectedStrategy.strategyName);
+
 	return (
 		<div className="strategy-section visible">
 			<div className="strategy-selector-row">
@@ -46,27 +62,22 @@ export const StrategySection: React.FC<StrategySectionProps> = ({
 				>
 					{strategies.map((s, idx) => (
 						<option key={idx} value={idx}>
-							{getStrategyDisplayName(s.strategyName, idx === 0)} ({s.silhouetteScore.toFixed(2)})
+							{getStrategyDisplayName(s.strategyName)}
 						</option>
 					))}
 				</select>
 			</div>
 
 			<div className="strategy-score">
-				Score: <strong>{selectedStrategy.silhouetteScore.toFixed(2)}</strong> · {selectedStrategy.clusterCount}{' '}
-				clusters
+				{selectedStrategy.clusterCount} clusters
 				{selectedStrategy.outlierCount > 0 ? ` · ${selectedStrategy.outlierCount} noise` : ''}
 			</div>
 
-			<div className="strategy-pills">
-				{strategies
-					.map((s, idx) => ({ s, idx }))
-					.filter(({ s }) => !s.strategyName.startsWith('kmeans'))
-					.map(({ s, idx }) => (
-						<span key={idx} className={`strategy-pill${idx === selectedStrategyIndex ? ' active' : ''}`}>
-							{getStrategyDisplayName(s.strategyName, false)}: {s.silhouetteScore.toFixed(2)}
-						</span>
-					))}
+			<div className="strategy-hint-card">
+				<div className="strategy-hint-header">
+					<span className="strategy-hint-tag">{details.tag}</span>
+				</div>
+				<p className="strategy-hint-desc">{details.desc}</p>
 			</div>
 		</div>
 	);

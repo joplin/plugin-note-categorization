@@ -98,13 +98,25 @@ describe('autoK computeKRange', () => {
 		expect(computeKRange(19)).toEqual([2, 9]); // floor(19/2) = 9
 	});
 
-	it('computes correct range for larger datasets (N >= 20, uses N/3)', () => {
-		expect(computeKRange(20)).toEqual([3, 6]); // floor(20/3) = 6
-		expect(computeKRange(30)).toEqual([3, 10]); // floor(30/3) = 10
-		expect(computeKRange(45)).toEqual([3, 15]); // floor(45/3) = 15, hits cap
-		expect(computeKRange(56)).toEqual([3, 15]); // floor(56/3) = 18, capped at 15
-		expect(computeKRange(100)).toEqual([3, 15]); // floor(100/3) = 33, capped at 15
-		expect(computeKRange(500)).toEqual([3, 15]); // capped at MAX_K_CAP=15
+	it('computes correct range for medium datasets (20 <= N <= 1000, uses ceil(1.5·√N))', () => {
+		expect(computeKRange(20)).toEqual([3, 7]); // ceil(1.5·√20) = 7
+		expect(computeKRange(30)).toEqual([3, 9]); // ceil(1.5·√30) = 9
+		expect(computeKRange(45)).toEqual([3, 11]); // ceil(1.5·√45) = 11
+		expect(computeKRange(56)).toEqual([3, 12]); // ceil(1.5·√56) = 12
+		expect(computeKRange(100)).toEqual([3, 15]); // ceil(1.5·√100) = 15
+		expect(computeKRange(225)).toEqual([3, 23]); // ceil(1.5·√225) = 23
+		expect(computeKRange(468)).toEqual([3, 33]); // ceil(1.5·√468) = 33
+		expect(computeKRange(500)).toEqual([3, 34]); // ceil(1.5·√500) = 34
+		expect(computeKRange(879)).toEqual([3, 45]); // ceil(1.5·√879) = 45
+		expect(computeKRange(1000)).toEqual([3, 48]); // ceil(1.5·√1000) = 48, density boost = 0
+	});
+
+	it('scales dynamically for large datasets (N > 1000, adds density boost (N-1000)/75)', () => {
+		// Formula: ceil(1.5·√N + (N-1000)/75), capped at ABSOLUTE_MAX_K=200
+		expect(computeKRange(2000)).toEqual([3, 81]); // ceil(67.1 + 13.3) = 81 — density ~24.7
+		expect(computeKRange(3000)).toEqual([3, 109]); // ceil(82.2 + 26.7) = 109 — density ~27.5
+		expect(computeKRange(5000)).toEqual([3, 160]); // ceil(106.1 + 53.3) = 160 — density ~31.3
+		expect(computeKRange(10000)).toEqual([3, 200]); // ceil(150 + 120) = 270, capped at 200
 	});
 });
 
@@ -156,7 +168,7 @@ describe('autoK findOptimalK', () => {
 	it('prefers higher K when silhouette scores are within tolerance', () => {
 		// 4 clusters of 8 points each, reasonably separated in 2D.
 		// K=2 and K=3 may score slightly higher in raw silhouette, but K=4
-		// should be within the 0.025 tolerance band and thus selected.
+		// should be within the 0.01 tolerance band and thus selected.
 		const FOUR_CLUSTERS = [
 			// Cluster near [0, 0]
 			...[0.1, 0.2, 0.0, 0.15, 0.05, 0.12, 0.08, 0.18].map((x, i) => [

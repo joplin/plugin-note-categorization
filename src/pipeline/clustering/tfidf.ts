@@ -4,6 +4,14 @@ import { selectDedupedTags } from './tagExtraction';
 const SINGULAR_EXCEPTIONS = new Set(['series', 'species', 'means', 'news', 'analysis', 'basis', 'crisis']);
 const SHORT_UNIGRAM_THRESHOLD = 4;
 
+/**
+ * Maximum body text length (in characters) to process for TF-IDF.
+ * The beginning of a note is most representative of its topic.
+ * Truncating avoids processing tens of thousands of ngrams from
+ * long code-heavy or data-heavy notes, which dominate extraction time.
+ */
+const MAX_BODY_CHARS = 3000;
+
 export interface DocumentText {
 	title: string;
 	body: string;
@@ -68,20 +76,23 @@ export function tokenize(text: string): string[] {
 }
 
 /**
- * Generates unigrams, bigrams, and trigrams from a sequence of tokens.
+ * Generates ngrams from a sequence of tokens.
+ * @param maxN  Maximum ngram size (1=unigrams, 2=+bigrams, 3=+trigrams).
+ *              Default 3. Body text uses 2 (skip trigrams for speed),
+ *              title text uses 3 (titles are short and specific).
  */
-export function getNgrams(tokens: string[]): string[] {
+export function getNgrams(tokens: string[], maxN = 3): string[] {
 	const ngrams: string[] = [];
 	const N = tokens.length;
 	for (let i = 0; i < N; i++) {
 		// Unigram
 		ngrams.push(tokens[i]);
 		// Bigram
-		if (i < N - 1) {
+		if (maxN >= 2 && i < N - 1) {
 			ngrams.push(`${tokens[i]} ${tokens[i + 1]}`);
 		}
 		// Trigram
-		if (i < N - 2) {
+		if (maxN >= 3 && i < N - 2) {
 			ngrams.push(`${tokens[i]} ${tokens[i + 1]} ${tokens[i + 2]}`);
 		}
 	}
@@ -104,24 +115,38 @@ export function hasConsecutiveDuplicates(phrase: string): boolean {
  */
 export class TfidfExtractor {
 	private idfs: { [word: string]: number } = {};
+	private cachedTitleNgrams: string[][] = [];
+	private cachedBodyNgrams: string[][] = [];
+	// Pre-computed unique ngram sets per document (avoids repeated Set creation during cluster extraction)
+	private cachedUniqueNgrams: Set<string>[] = [];
 
 	constructor(allDocuments: DocumentText[]) {
 		const N = allDocuments.length;
 		if (N === 0) return;
 
-		const docFreqs: { [word: string]: number } = {};
-
+		// Pre-compute and cache ngrams for every document (done once)
 		for (const doc of allDocuments) {
-			// For IDF, we only need unique words/ngrams per document — no title weighting needed
-			const uniqueWords = this.getUniqueDocumentWords(doc);
-			for (const word of uniqueWords) {
+			// Title: use trigrams (titles are short and specific)
+			const titleNg = this.getSegmentNgrams(doc.title || '', 3);
+			// Body: use only unigrams + bigrams (skip trigrams for speed — they
+			// account for ~33% of ngrams but are rarely useful for topic names)
+			const bodyText = (doc.body || '').slice(0, MAX_BODY_CHARS);
+			const bodyNg = this.getSegmentNgrams(bodyText, 2);
+			this.cachedTitleNgrams.push(titleNg);
+			this.cachedBodyNgrams.push(bodyNg);
+			this.cachedUniqueNgrams.push(new Set([...titleNg, ...bodyNg]));
+		}
+
+		// Build IDF from cached ngrams
+		const docFreqs: { [word: string]: number } = {};
+		for (let i = 0; i < N; i++) {
+			for (const word of this.cachedUniqueNgrams[i]) {
 				docFreqs[word] = (docFreqs[word] || 0) + 1;
 			}
 		}
 
 		for (const word of Object.keys(docFreqs)) {
 			const df = docFreqs[word];
-			// Max DF rule: If a word/ngram appears in > 60% of all notes, it is too generic, ignore it.
 			if (df / N > 0.6) {
 				this.idfs[word] = 0;
 			} else {
@@ -133,15 +158,16 @@ export class TfidfExtractor {
 	/**
 	 * Splits the text by sentence/line boundaries and generates ngrams within segments.
 	 * This prevents forming cross-boundary ngrams (like joining separate lines or sentences).
+	 * @param maxN  Maximum ngram size (default 3). Use 2 for body text to skip trigrams.
 	 */
-	private getSegmentNgrams(text: string): string[] {
+	private getSegmentNgrams(text: string, maxN = 3): string[] {
 		if (!text) return [];
 		// Split by sentence punctuation, newlines, markdown headers, and list bullets
 		const segments = text.split(/[.,?!;:\n\r\-*#()[\]]+/);
 		const allNgrams: string[] = [];
 		for (const seg of segments) {
 			const tokens = tokenize(seg);
-			const ngrams = getNgrams(tokens);
+			const ngrams = getNgrams(tokens, maxN);
 			for (const ng of ngrams) {
 				// Filter out any ngrams with consecutive duplicate words (e.g. "day day")
 				if (!hasConsecutiveDuplicates(ng)) {
@@ -150,16 +176,6 @@ export class TfidfExtractor {
 			}
 		}
 		return allNgrams;
-	}
-
-	/**
-	 * Returns the unique set of words/ngrams in a document (title + body), used for IDF counting.
-	 * No title weighting — each document contributes at most 1 to each ngram's document frequency.
-	 */
-	private getUniqueDocumentWords(doc: DocumentText): Set<string> {
-		const titleNgrams = this.getSegmentNgrams(doc.title || '');
-		const bodyNgrams = this.getSegmentNgrams(doc.body || '');
-		return new Set([...titleNgrams, ...bodyNgrams]);
 	}
 
 	/**
@@ -215,6 +231,15 @@ export class TfidfExtractor {
 
 		const scores: { ngram: string; score: number }[] = [];
 
+		// Pre-compute title ngram sets once per cluster to avoid redundant tokenization
+		// inside the scoring loop (was O(uniqueNgrams × clusterSize) calls to getSegmentNgrams)
+		const allTitleNgrams = new Set<string>();
+		for (const doc of clusterDocuments) {
+			for (const ng of this.getSegmentNgrams(doc.title || '')) {
+				allTitleNgrams.add(ng);
+			}
+		}
+
 		for (const ngram of Object.keys(tfs)) {
 			const idf = this.idfs[ngram] || 0; // default to 0 if word is ignored/generic
 			if (idf > 0) {
@@ -231,15 +256,96 @@ export class TfidfExtractor {
 				}
 
 				// Title match boost: 1.5x if it appears in any note title in this cluster
-				let appearsInTitle = false;
-				for (const doc of clusterDocuments) {
-					const titleNgrams = new Set(this.getSegmentNgrams(doc.title || ''));
-					if (titleNgrams.has(ngram)) {
-						appearsInTitle = true;
-						break;
-					}
+				const titleBoost = allTitleNgrams.has(ngram) ? 1.5 : 1.0;
+
+				const finalScore = tf * idf * cf * lengthBoost * titleBoost;
+				scores.push({ ngram, score: finalScore });
+			}
+		}
+
+		scores.sort((a, b) => b.score - a.score);
+		return scores;
+	}
+
+	/**
+	 * Index-based cluster extraction using pre-computed ngrams.
+	 *
+	 * Performance optimizations vs the original extractClusterNgramsWithScores():
+	 * 1. Uses pre-computed cached ngrams (no re-tokenization)
+	 * 2. Uses Map instead of plain objects (consistent O(1) in sandbox)
+	 * 3. Prunes to top 100 TF candidates before scoring (we only need 5 tags)
+	 */
+	public extractClusterNgramsByIndices(docIndices: number[]): { ngram: string; score: number }[] {
+		if (docIndices.length === 0) return [];
+
+		// --- Phase 1: Count term frequencies using Map for consistent performance ---
+		const tfs = new Map<string, number>();
+		let totalNgrams = 0;
+
+		for (const idx of docIndices) {
+			const titleNgrams = this.cachedTitleNgrams[idx];
+			const bodyNgrams = this.cachedBodyNgrams[idx];
+			// Title ngrams weighted 5x
+			for (let i = 0; i < 5; i++) {
+				for (const ng of titleNgrams) {
+					tfs.set(ng, (tfs.get(ng) || 0) + 1);
+					totalNgrams++;
 				}
-				const titleBoost = appearsInTitle ? 1.5 : 1.0;
+			}
+			for (const ng of bodyNgrams) {
+				tfs.set(ng, (tfs.get(ng) || 0) + 1);
+				totalNgrams++;
+			}
+		}
+
+		if (totalNgrams === 0) return [];
+
+		// --- Phase 2: Prune to top 100 candidates by raw TF count ---
+		// We only need 5 tags, so scoring all 30K+ unique ngrams is wasteful.
+		// Keep the top 100 by frequency — these are the most likely topic words.
+		const TOP_CANDIDATES = 100;
+		let candidates: [string, number][];
+		if (tfs.size > TOP_CANDIDATES) {
+			candidates = [...tfs.entries()].sort((a, b) => b[1] - a[1]).slice(0, TOP_CANDIDATES);
+		} else {
+			candidates = [...tfs.entries()];
+		}
+
+		// --- Phase 3: Compute docCounts only for the candidate ngrams ---
+		const candidateSet = new Set(candidates.map(([ng]) => ng));
+		const docCounts = new Map<string, number>();
+		for (const idx of docIndices) {
+			for (const ng of this.cachedUniqueNgrams[idx]) {
+				if (candidateSet.has(ng)) {
+					docCounts.set(ng, (docCounts.get(ng) || 0) + 1);
+				}
+			}
+		}
+
+		// --- Phase 4: Score only candidates with IDF/CF/boosts ---
+		const allTitleNgrams = new Set<string>();
+		for (const idx of docIndices) {
+			for (const ng of this.cachedTitleNgrams[idx]) {
+				allTitleNgrams.add(ng);
+			}
+		}
+
+		const scores: { ngram: string; score: number }[] = [];
+
+		for (const [ngram, count] of candidates) {
+			const idf = this.idfs[ngram] || 0;
+			if (idf > 0) {
+				const tf = count / totalNgrams;
+				const cf = (docCounts.get(ngram) || 0) / docIndices.length;
+
+				const wordCount = ngram.split(' ').length;
+				let lengthBoost = 1.0 + (wordCount - 1) * 0.5;
+
+				if (wordCount === 1 && ngram.length <= SHORT_UNIGRAM_THRESHOLD) {
+					lengthBoost *= 0.5;
+				}
+
+				const titleBoost = allTitleNgrams.has(ngram) ? 1.5 : 1.0;
 
 				const finalScore = tf * idf * cf * lengthBoost * titleBoost;
 				scores.push({ ngram, score: finalScore });

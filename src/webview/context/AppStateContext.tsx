@@ -135,11 +135,11 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 					setIsRunning(false);
 					setStrategies(msg.strategies || []);
 					setNotes(msg.notes || []);
-					const nonTestingIdx = (msg.strategies || []).findIndex(
-						(s: BenchmarkResult) => !s.strategyName.startsWith('kmeans'),
+					const kmeansIdx = (msg.strategies || []).findIndex((s: BenchmarkResult) =>
+						s.strategyName.startsWith('kmeans'),
 					);
-					const fallbackIdx = nonTestingIdx !== -1 ? nonTestingIdx : 0;
-					setSelectedStrategyIndex(msg.selectedStrategyIndex ?? fallbackIdx);
+					const defaultIdx = kmeansIdx !== -1 ? kmeansIdx : 0;
+					setSelectedStrategyIndex(msg.selectedStrategyIndex ?? defaultIdx);
 					setError(null);
 					setActiveView('dashboard');
 					break;

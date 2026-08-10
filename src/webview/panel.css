@@ -192,9 +192,9 @@ body {
 /* STRATEGY SECTION */
 
 .strategy-section {
-	padding: 14px 0;
+	padding: 4px 0 10px 0;
 	border-bottom: 1px solid var(--joplin-divider-color);
-	margin-bottom: 12px;
+	margin-bottom: 10px;
 	display: none;
 }
 
@@ -206,7 +206,7 @@ body {
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	margin-bottom: 8px;
+	margin-bottom: 4px;
 }
 
 .strategy-selector-label {
@@ -223,7 +223,8 @@ body {
 	border-radius: 6px;
 	background: var(--joplin-background-color);
 	color: var(--joplin-color);
-	font-size: 0.82em;
+	font-size: 0.84em;
+	font-weight: 500;
 	font-family: inherit;
 	cursor: pointer;
 	outline: none;
@@ -236,41 +237,38 @@ body {
 
 .strategy-score {
 	font-size: 0.78em;
-	opacity: 0.5;
-	margin-bottom: 10px;
-}
-
-.strategy-score strong {
-	opacity: 1;
-	font-weight: 600;
-}
-
-.strategy-pills {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 6px;
-}
-
-.strategy-pill {
-	display: inline-block;
-	padding: 3px 10px;
-	border-radius: 100px;
-	font-size: 0.8em;
 	font-weight: 500;
-	background: color-mix(in srgb, var(--joplin-color) 4%, var(--joplin-background-color));
-	border: 1px solid var(--joplin-divider-color);
-	color: var(--joplin-color);
 	opacity: 0.55;
-	white-space: nowrap;
-	transition: opacity 150ms ease, border-color 150ms ease;
-	cursor: default;
+	margin-bottom: 8px;
 }
 
-.strategy-pill.active {
-	opacity: 1;
+.strategy-hint-card {
+	background: color-mix(in srgb, var(--joplin-color) 3%, var(--joplin-background-color));
+	border: 1px solid color-mix(in srgb, var(--joplin-color) 8%, var(--joplin-divider-color));
+	border-radius: 6px;
+	padding: 8px 10px;
+	margin-top: 4px;
+}
+
+.strategy-hint-header {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	margin-bottom: 3px;
+}
+
+.strategy-hint-tag {
+	font-size: 0.74em;
 	font-weight: 600;
-	border-color: color-mix(in srgb, var(--joplin-color) 25%, var(--joplin-divider-color));
-	background: color-mix(in srgb, var(--joplin-color) 8%, var(--joplin-background-color));
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	opacity: 0.75;
+}
+
+.strategy-hint-desc {
+	font-size: 0.78em;
+	opacity: 0.6;
+	line-height: 1.4;
 }
 
 /* CLUSTER LIST */
