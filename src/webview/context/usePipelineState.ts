@@ -16,6 +16,8 @@ export function usePipelineState(startPolling: () => void, resetApplyState: () =
 	const [notes, setNotes] = React.useState<PanelNote[]>([]);
 	const [selectedStrategyIndex, setSelectedStrategyIndex] = React.useState<number>(0);
 	const [activeView, setActiveView] = React.useState<ViewType>('idle');
+	const [isNativeAiUsed, setIsNativeAiUsed] = React.useState<boolean>(true);
+	const [isAiNamingUsed, setIsAiNamingUsed] = React.useState<boolean>(true);
 
 	const runPipeline = async () => {
 		setIsRunning(true);
@@ -25,6 +27,8 @@ export function usePipelineState(startPolling: () => void, resetApplyState: () =
 		setNotes([]);
 		setError(null);
 		setActiveView('idle');
+		setIsNativeAiUsed(true);
+		setIsAiNamingUsed(true);
 
 		// Reset apply/undo/cleanup states
 		resetApplyState();
@@ -145,6 +149,8 @@ export function usePipelineState(startPolling: () => void, resetApplyState: () =
 		notes,
 		selectedStrategyIndex,
 		activeView,
+		isNativeAiUsed,
+		isAiNamingUsed,
 		runPipeline,
 		changeStrategy,
 		setView,
@@ -159,5 +165,7 @@ export function usePipelineState(startPolling: () => void, resetApplyState: () =
 		setSelectedStrategyIndex,
 		setError,
 		setActiveView,
+		setIsNativeAiUsed,
+		setIsAiNamingUsed,
 	};
 }

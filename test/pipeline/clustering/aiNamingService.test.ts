@@ -1,10 +1,24 @@
-jest.mock('api', () => ({}), { virtual: true });
+const mockChat = jest.fn();
+jest.mock(
+	'api',
+	() => ({
+		__esModule: true,
+		default: {
+			ai: {
+				chat: (...args: unknown[]) => mockChat(...args),
+			},
+		},
+	}),
+	{ virtual: true },
+);
 
 import {
 	sanitizeAiName,
 	buildNamingPrompt,
 	parseAiNamesResponse,
+	upgradeClusterNamesWithAi,
 } from '../../../src/pipeline/clustering/aiNamingService';
+import { BenchmarkResult } from '../../../src/types/cluster';
 
 describe('sanitizeAiName', () => {
 	it('trims whitespace', () => {
@@ -239,5 +253,73 @@ describe('parseAiNamesResponse', () => {
 		const response = '{"0": "Alpha", "3": "Beta"}';
 		const result = parseAiNamesResponse(response, [0, 3]);
 		expect(result).toEqual({ 0: 'Alpha', 3: 'Beta' });
+	});
+});
+
+describe('upgradeClusterNamesWithAi', () => {
+	beforeEach(() => {
+		mockChat.mockReset();
+	});
+
+	it('returns true and upgrades cluster names when ai.chat succeeds', async () => {
+		mockChat.mockResolvedValueOnce({ text: '{"0": "AI Web Dev", "1": "AI Travel"}' });
+
+		const results: BenchmarkResult[] = [
+			{
+				strategyName: 'kmeans-auto',
+				algorithm: 'kmeans',
+				clusterCount: 2,
+				silhouetteScore: 0.8,
+				outlierCount: 0,
+				timeMs: 10,
+				clusterSizes: [2, 2],
+				clusterNames: { 0: 'Web', 1: 'Travel' },
+				assignments: [0, 0, 1, 1],
+				tags: { 0: ['web'], 1: ['travel'] },
+			},
+		];
+		const documents = [
+			{ title: 'React Guide', body: 'React' },
+			{ title: 'Vue Guide', body: 'Vue' },
+			{ title: 'Paris Trip', body: 'Paris' },
+			{ title: 'Tokyo Trip', body: 'Tokyo' },
+		];
+
+		const upgraded = await upgradeClusterNamesWithAi(results, documents);
+
+		expect(upgraded).toBe(true);
+		expect(results[0].clusterNames?.[0]).toBe('AI Web Dev');
+		expect(results[0].clusterNames?.[1]).toBe('AI Travel');
+	});
+
+	it('returns false and keeps TF-IDF names when ai.chat fails or throws', async () => {
+		mockChat.mockRejectedValueOnce(new Error('AI chat unavailable'));
+
+		const results: BenchmarkResult[] = [
+			{
+				strategyName: 'kmeans-auto',
+				algorithm: 'kmeans',
+				clusterCount: 2,
+				silhouetteScore: 0.8,
+				outlierCount: 0,
+				timeMs: 10,
+				clusterSizes: [2, 2],
+				clusterNames: { 0: 'TF-IDF Web', 1: 'TF-IDF Travel' },
+				assignments: [0, 0, 1, 1],
+				tags: { 0: ['web'], 1: ['travel'] },
+			},
+		];
+		const documents = [
+			{ title: 'React Guide', body: 'React' },
+			{ title: 'Vue Guide', body: 'Vue' },
+			{ title: 'Paris Trip', body: 'Paris' },
+			{ title: 'Tokyo Trip', body: 'Tokyo' },
+		];
+
+		const upgraded = await upgradeClusterNamesWithAi(results, documents);
+
+		expect(upgraded).toBe(false);
+		expect(results[0].clusterNames?.[0]).toBe('TF-IDF Web');
+		expect(results[0].clusterNames?.[1]).toBe('TF-IDF Travel');
 	});
 });

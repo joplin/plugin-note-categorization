@@ -591,6 +591,74 @@ body {
 	border-color: color-mix(in srgb, #dc2626 15%, var(--joplin-divider-color));
 }
 
+/* NOTICE BANNERS */
+
+.notice-banner {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 10px 12px;
+	border-radius: 6px;
+	font-size: 0.8em;
+	line-height: 1.45;
+	margin-bottom: 12px;
+	border: 1px solid color-mix(in srgb, var(--joplin-color-blue, #2563eb) 20%, var(--joplin-divider-color));
+	background: color-mix(in srgb, var(--joplin-color-blue, #2563eb) 5%, var(--joplin-background-color));
+	color: var(--joplin-color);
+	position: relative;
+}
+
+.notice-banner.info {
+	border-color: color-mix(in srgb, var(--joplin-color-blue, #2563eb) 22%, var(--joplin-divider-color));
+	background: color-mix(in srgb, var(--joplin-color-blue, #2563eb) 6%, var(--joplin-background-color));
+}
+
+.notice-banner.warning {
+	border-color: color-mix(in srgb, var(--joplin-color-blue, #2563eb) 18%, var(--joplin-divider-color));
+	background: color-mix(in srgb, var(--joplin-color-blue, #2563eb) 4%, var(--joplin-background-color));
+}
+
+.notice-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	margin-top: 2px;
+	color: var(--joplin-color-blue, #2563eb);
+	opacity: 0.9;
+}
+
+.notice-content {
+	flex: 1;
+	opacity: 0.85;
+}
+
+.notice-content strong {
+	font-weight: 600;
+	opacity: 1;
+}
+
+.notice-close-btn {
+	background: transparent;
+	border: none;
+	padding: 2px;
+	cursor: pointer;
+	color: var(--joplin-color);
+	opacity: 0.4;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 4px;
+	transition: opacity 150ms ease, background 150ms ease;
+	flex-shrink: 0;
+	margin-top: 1px;
+}
+
+.notice-close-btn:hover {
+	opacity: 0.9;
+	background: color-mix(in srgb, var(--joplin-color) 8%, transparent);
+}
+
 /* HISTORY PAGE */
 
 .undo-history-card {
