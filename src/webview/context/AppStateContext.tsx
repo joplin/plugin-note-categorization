@@ -17,6 +17,8 @@ interface AppStateContextType {
 	notes: PanelNote[];
 	selectedStrategyIndex: number;
 	activeView: ViewType;
+	isNativeAiUsed: boolean;
+	isAiNamingUsed: boolean;
 	runPipeline: () => void;
 	changeStrategy: (index: number) => void;
 	setView: (view: ViewType) => void;
@@ -96,6 +98,8 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 		notes,
 		selectedStrategyIndex,
 		activeView,
+		isNativeAiUsed,
+		isAiNamingUsed,
 		runPipeline,
 		changeStrategy,
 		setView,
@@ -110,6 +114,8 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 		setSelectedStrategyIndex,
 		setError,
 		setActiveView,
+		setIsNativeAiUsed,
+		setIsAiNamingUsed,
 	} = usePipelineState(() => startPolling(), resetApplyState);
 
 	const handlePollResponse = React.useCallback(
@@ -119,6 +125,9 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 			switch (msg.type) {
 				case 'status':
 					setStatusText(msg.text || '');
+					if (typeof msg.isNativeAiUsed === 'boolean') {
+						setIsNativeAiUsed(msg.isNativeAiUsed);
+					}
 					break;
 
 				case 'progress':
@@ -128,6 +137,9 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 						cached: msg.cached || 0,
 						skipped: msg.skipped || 0,
 					});
+					if (typeof msg.isNativeAiUsed === 'boolean') {
+						setIsNativeAiUsed(msg.isNativeAiUsed);
+					}
 					break;
 
 				case 'results': {
@@ -140,6 +152,12 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 					);
 					const defaultIdx = kmeansIdx !== -1 ? kmeansIdx : 0;
 					setSelectedStrategyIndex(msg.selectedStrategyIndex ?? defaultIdx);
+					if (typeof msg.isNativeAiUsed === 'boolean') {
+						setIsNativeAiUsed(msg.isNativeAiUsed);
+					}
+					if (typeof msg.isAiNamingUsed === 'boolean') {
+						setIsAiNamingUsed(msg.isAiNamingUsed);
+					}
 					setError(null);
 					setActiveView('dashboard');
 					break;
@@ -225,6 +243,8 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 			setUndoProgress,
 			setUndoError,
 			setUndoSuccess,
+			setIsNativeAiUsed,
+			setIsAiNamingUsed,
 		],
 	);
 
@@ -302,6 +322,8 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 				notes,
 				selectedStrategyIndex,
 				activeView,
+				isNativeAiUsed,
+				isAiNamingUsed,
 				runPipeline,
 				changeStrategy,
 				setView,

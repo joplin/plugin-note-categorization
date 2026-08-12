@@ -171,7 +171,11 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
  * in a single unchained expression as a defensive practice to prevent proxy path
  * state accumulation across Joplin sandbox runtime versions.
  */
-export async function upgradeClusterNamesWithAi(results: BenchmarkResult[], documents: DocumentText[]): Promise<void> {
+export async function upgradeClusterNamesWithAi(
+	results: BenchmarkResult[],
+	documents: DocumentText[],
+): Promise<boolean> {
+	let anyUpgraded = false;
 	await Promise.all(
 		results.map(async (result) => {
 			if (!result.clusterNames || Object.keys(result.clusterNames).length === 0) {
@@ -266,6 +270,10 @@ export async function upgradeClusterNamesWithAi(results: BenchmarkResult[], docu
 					// If AI didn't provide a name for this cluster, keep the TF-IDF name
 				}
 
+				if (upgradedCount > 0) {
+					anyUpgraded = true;
+				}
+
 				log(`AI naming: upgraded ${upgradedCount}/${clusterIds.length} cluster names`);
 
 				// Resolve name collisions (same logic pattern as postProcess.ts)
@@ -277,6 +285,8 @@ export async function upgradeClusterNamesWithAi(results: BenchmarkResult[], docu
 			}
 		}),
 	);
+
+	return anyUpgraded;
 }
 
 /**

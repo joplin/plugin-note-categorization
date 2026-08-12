@@ -20,6 +20,8 @@ export async function setupPanel(operationState: OperationState): Promise<string
 		strategies: BenchmarkResult[];
 		notes: PanelNote[];
 		selectedStrategyIndex: number;
+		isNativeAiUsed?: boolean;
+		isAiNamingUsed?: boolean;
 	} | null = null;
 
 	await joplin.views.panels.onMessage(panel, async (msg: WebviewMessage) => {
@@ -29,15 +31,21 @@ export async function setupPanel(operationState: OperationState): Promise<string
 				log('Panel: starting pipeline');
 
 				runPipeline(installDir, {
-					onStatus: (text) => {
-						panelState = { type: 'status', text };
+					onStatus: (text, isNativeAiUsed) => {
+						panelState = { type: 'status', text, isNativeAiUsed };
 					},
-					onProgress: (current, total, cached, skipped) => {
-						panelState = { type: 'progress', current, total, cached, skipped };
+					onProgress: (current, total, cached, skipped, isNativeAiUsed) => {
+						panelState = { type: 'progress', current, total, cached, skipped, isNativeAiUsed };
 					},
-					onComplete: (strategies, notes) => {
-						lastResultsState = { strategies, notes, selectedStrategyIndex: 0 };
-						panelState = { type: 'results', strategies, notes };
+					onComplete: (strategies, notes, isNativeAiUsed, isAiNamingUsed) => {
+						lastResultsState = {
+							strategies,
+							notes,
+							selectedStrategyIndex: 0,
+							isNativeAiUsed,
+							isAiNamingUsed,
+						};
+						panelState = { type: 'results', strategies, notes, isNativeAiUsed, isAiNamingUsed };
 					},
 					onError: (message) => {
 						panelState = { type: 'error', message };
@@ -59,6 +67,8 @@ export async function setupPanel(operationState: OperationState): Promise<string
 						strategies: lastResultsState.strategies,
 						notes: lastResultsState.notes,
 						selectedStrategyIndex: lastResultsState.selectedStrategyIndex,
+						isNativeAiUsed: lastResultsState.isNativeAiUsed,
+						isAiNamingUsed: lastResultsState.isAiNamingUsed,
 					};
 				}
 				return panelState;

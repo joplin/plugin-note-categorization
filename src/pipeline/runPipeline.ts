@@ -12,9 +12,14 @@ import { upgradeClusterNamesWithAi } from './clustering/aiNamingService';
 import { EmbeddingWorkerOrchestrator } from './EmbeddingWorkerOrchestrator';
 
 export interface PipelineCallbacks {
-	onStatus: (text: string) => void;
-	onProgress: (current: number, total: number, cached: number, skipped: number) => void;
-	onComplete: (strategies: import('../types/cluster').BenchmarkResult[], notes: PanelNote[]) => void;
+	onStatus: (text: string, isNativeAiUsed?: boolean) => void;
+	onProgress: (current: number, total: number, cached: number, skipped: number, isNativeAiUsed?: boolean) => void;
+	onComplete: (
+		strategies: import('../types/cluster').BenchmarkResult[],
+		notes: PanelNote[],
+		isNativeAiUsed?: boolean,
+		isAiNamingUsed?: boolean,
+	) => void;
 	onError: (message: string) => void;
 }
 
@@ -52,7 +57,7 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 
 		if (await isNativeAiReady()) {
 			log('Native AI Search active: using native embeddings pipeline');
-			callbacks.onStatus('Fetching native embeddings...');
+			callbacks.onStatus('Fetching native embeddings...', true);
 
 			try {
 				const noteIds = notes.map((n) => n.id);
@@ -102,7 +107,7 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 				if (validNotes.length < 3) {
 					log('Too few indexed notes found in native DB. Falling back to local ONNX Web Worker.');
 				} else {
-					callbacks.onStatus('Clustering...');
+					callbacks.onStatus('Clustering...', true);
 					const clusterStart = performance.now();
 					const adaptiveConfig = createAdaptiveConfig(
 						nativeResult.dimension,
@@ -121,14 +126,15 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 
 					callbacks.onStatus(
 						`Extracting topics for ${results.reduce((sum, r) => sum + r.clusterCount, 0)} clusters...`,
+						true,
 					);
 					const enrichStart = performance.now();
-					await enrichResultsWithTags(results, allPipelineDocuments, 5, callbacks.onStatus);
+					await enrichResultsWithTags(results, allPipelineDocuments, 5, (t) => callbacks.onStatus(t, true));
 					log(`Topic extraction: ${Math.round(performance.now() - enrichStart)}ms`);
 
-					callbacks.onStatus('Generating AI cluster names...');
+					callbacks.onStatus('Generating AI cluster names...', true);
 					const aiStart = performance.now();
-					await upgradeClusterNamesWithAi(results, allPipelineDocuments);
+					const isAiNamingUsed = await upgradeClusterNamesWithAi(results, allPipelineDocuments);
 					log(`AI naming: ${Math.round(performance.now() - aiStart)}ms`);
 
 					const panelNotes: PanelNote[] = validNotes.map((n) => ({
@@ -136,7 +142,7 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 						title: n.title,
 					}));
 
-					callbacks.onComplete(results, panelNotes);
+					callbacks.onComplete(results, panelNotes, true, isAiNamingUsed);
 					return;
 				}
 			} catch (err) {
@@ -161,7 +167,13 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 		await cache.beginUpdate();
 
 		const batchStartTime = performance.now();
-		const orchestrator = new EmbeddingWorkerOrchestrator(installDir, notes, cache, callbacks);
+		const fallbackCallbacks: PipelineCallbacks = {
+			...callbacks,
+			onStatus: (text) => callbacks.onStatus(text, false),
+			onProgress: (current, total, cached, skipped) =>
+				callbacks.onProgress(current, total, cached, skipped, false),
+		};
+		const orchestrator = new EmbeddingWorkerOrchestrator(installDir, notes, cache, fallbackCallbacks);
 
 		let result;
 		try {
@@ -184,7 +196,7 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 
 		await cache.endUpdate();
 
-		callbacks.onStatus('Clustering...');
+		callbacks.onStatus('Clustering...', false);
 
 		if (noteVectors.length < 3) {
 			callbacks.onError('Too few notes for clustering (need at least 3).');
@@ -207,14 +219,17 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 			};
 		});
 
-		callbacks.onStatus(`Extracting topics for ${results.reduce((sum, r) => sum + r.clusterCount, 0)} clusters...`);
+		callbacks.onStatus(
+			`Extracting topics for ${results.reduce((sum, r) => sum + r.clusterCount, 0)} clusters...`,
+			false,
+		);
 		const enrichStart = performance.now();
-		await enrichResultsWithTags(results, allPipelineDocuments, 5, callbacks.onStatus);
+		await enrichResultsWithTags(results, allPipelineDocuments, 5, (t) => callbacks.onStatus(t, false));
 		log(`Topic extraction: ${Math.round(performance.now() - enrichStart)}ms`);
 
-		callbacks.onStatus('Generating AI cluster names...');
+		callbacks.onStatus('Generating AI cluster names...', false);
 		const aiStart = performance.now();
-		await upgradeClusterNamesWithAi(results, allPipelineDocuments);
+		const isAiNamingUsed = await upgradeClusterNamesWithAi(results, allPipelineDocuments);
 		log(`AI naming: ${Math.round(performance.now() - aiStart)}ms`);
 
 		const panelNotes: PanelNote[] = noteVectors.map((nv) => ({
@@ -222,7 +237,7 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 			title: nv.title,
 		}));
 
-		callbacks.onComplete(results, panelNotes);
+		callbacks.onComplete(results, panelNotes, false, isAiNamingUsed);
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
 		logErr('Pipeline failed:', message);

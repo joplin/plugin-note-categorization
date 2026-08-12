@@ -4,6 +4,8 @@ import { Header } from '../components/Header';
 import { StrategySection } from '../components/StrategySection';
 import { ClusterCard } from '../components/ClusterCard';
 
+import { NoticeBanner } from '../components/NoticeBanner';
+
 export const DashboardPage: React.FC = () => {
 	const {
 		isRunning,
@@ -22,6 +24,8 @@ export const DashboardPage: React.FC = () => {
 		applyChanges,
 		isUndoing,
 		settings,
+		isNativeAiUsed,
+		isAiNamingUsed,
 	} = useAppState();
 
 	const selectedStrategy = strategies[selectedStrategyIndex];
@@ -30,31 +34,31 @@ export const DashboardPage: React.FC = () => {
 	const [newClusterName, setNewClusterName] = React.useState('');
 	const [duplicateError, setDuplicateError] = React.useState(false);
 
+	const [isNativeAiDismissed, setIsNativeAiDismissed] = React.useState(false);
+	const [isAiNamingDismissed, setIsAiNamingDismissed] = React.useState(false);
+
 	const { clusters, noise, sortedClusterIds } = React.useMemo(() => {
 		const clusters: { [key: number]: number[] } = {};
 		const noise: number[] = [];
 
 		if (selectedStrategy) {
-			const clusterNames = selectedStrategy.clusterNames || {};
-			Object.keys(clusterNames).forEach((clusterId) => {
-				clusters[Number(clusterId)] = [];
-			});
+			const assignments = selectedStrategy.assignments || [];
 
-			selectedStrategy.assignments.forEach((clusterId, noteIndex) => {
+			assignments.forEach((clusterId, noteIdx) => {
 				if (clusterId === -1) {
-					noise.push(noteIndex);
+					noise.push(noteIdx);
 				} else {
 					if (!clusters[clusterId]) {
 						clusters[clusterId] = [];
 					}
-					clusters[clusterId].push(noteIndex);
+					clusters[clusterId].push(noteIdx);
 				}
 			});
 		}
 
 		const sortedClusterIds = Object.keys(clusters)
 			.map(Number)
-			.sort((a, b) => clusters[b].length - clusters[a].length);
+			.sort((a, b) => a - b);
 
 		return { clusters, noise, sortedClusterIds };
 	}, [selectedStrategy]);
@@ -88,11 +92,29 @@ export const DashboardPage: React.FC = () => {
 		<div className="page-dashboard">
 			<Header isRunning={isRunning} onRun={runPipeline} />
 
+			{!isNativeAiUsed && !isNativeAiDismissed && (
+				<NoticeBanner
+					variant="info"
+					title="Tip for faster performance"
+					message="Using local webview embeddings. Enable Joplin Native AI in Settings for up to 5x faster indexing while keeping data 100% local."
+					onClose={() => setIsNativeAiDismissed(true)}
+				/>
+			)}
+
 			<StrategySection
 				strategies={strategies}
 				selectedStrategyIndex={selectedStrategyIndex}
 				onStrategyChange={changeStrategy}
 			/>
+
+			{!isAiNamingUsed && !isAiNamingDismissed && (
+				<NoticeBanner
+					variant="warning"
+					title="Basic Naming Mode"
+					message="Cluster names were generated using basic keyword extraction and may be less descriptive. Enable Joplin AI for smarter category titles."
+					onClose={() => setIsAiNamingDismissed(true)}
+				/>
+			)}
 
 			<div className="cluster-list visible">
 				{selectedStrategy &&
