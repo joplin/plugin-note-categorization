@@ -1,8 +1,6 @@
 import { CategorizationConfig, BenchmarkResult, ClusteringStrategy } from '../../types/cluster';
 import { DistanceFn, getDistanceFn, silhouetteScore, euclideanDistance } from './metrics';
 import { kmeans } from './kmeans';
-// NOTE: kmedoids is not used in the default pipeline (too slow), but kept here for manual benchmarking
-import { kmedoids } from './kmedoids';
 import { hdbscan } from './hdbscan';
 import { findOptimalK } from './autoK';
 import { UmapProjector } from '../UmapProjector';
@@ -26,8 +24,6 @@ export function runStrategy(
 	switch (strategy.algorithm) {
 		case 'kmeans':
 			return kmeans(vectors, strategy.K ?? DEFAULT_K, distFn, seed);
-		case 'kmedoids': // NOTE: not used in default pipeline strategies (too slow)
-			return kmedoids(vectors, strategy.K ?? DEFAULT_K, distFn, seed);
 		case 'hdbscan':
 			return hdbscan(vectors, strategy.minClusterSize ?? DEFAULT_MIN_CLUSTER_SIZE, strategy.minSamples, distFn);
 		default:
@@ -150,7 +146,7 @@ export function benchmark(
 			let assignments: number[];
 			let score: number;
 
-			if (strategy.K === 'auto' && (strategy.algorithm === 'kmeans' || strategy.algorithm === 'kmedoids')) {
+			if (strategy.K === 'auto' && strategy.algorithm === 'kmeans') {
 				// Auto-K: sweep K range and pick the best
 				const autoResult = findOptimalK(clusteringVectors, strategy.algorithm, clusterDistFn, config.seed);
 				assignments = autoResult.assignments;
