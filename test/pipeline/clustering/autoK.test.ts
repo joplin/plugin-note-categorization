@@ -150,11 +150,9 @@ describe('autoK findOptimalK', () => {
 		expect(res1).toEqual(res2);
 	});
 
-	it('works with both kmeans and kmedoids', () => {
+	it('finds optimal K using kmeans', () => {
 		const resKmeans = findOptimalK(THREE_CLUSTERS, 'kmeans', euclideanDistance, 42);
-		const resKmedoids = findOptimalK(THREE_CLUSTERS, 'kmedoids', euclideanDistance, 42);
 		expect(resKmeans.bestK).toBe(3);
-		expect(resKmedoids.bestK).toBe(3);
 	});
 
 	it('falls back to K=1 when no valid clustering is possible', () => {

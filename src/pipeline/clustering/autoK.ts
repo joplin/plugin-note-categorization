@@ -1,7 +1,5 @@
 import { DistanceFn, silhouetteScore } from './metrics';
 import { kmeans } from './kmeans';
-// NOTE: kmedoids is not used in the default pipeline (too slow), but kept here for manual benchmarking
-import { kmedoids } from './kmedoids';
 import { log } from '../../utils/logger';
 
 /** Absolute minimum K to try (silhouette needs at least 2 clusters). */
@@ -107,23 +105,18 @@ export function computeKRange(n: number): [number, number] {
  * produces more useful note categories.
  *
  * @param vectors    Input data points (N x D), already UMAP-reduced if applicable
- * @param algorithm  Which algorithm to use: 'kmeans' or 'kmedoids' (note: kmedoids is not used in the default pipeline)
+ * @param algorithm  Which algorithm to use: 'kmeans'
  * @param distFn     Distance function (cosine or euclidean)
  * @param seed       Seed for reproducible initialization
  * @returns          The optimal K, its assignments, and its silhouette score
  */
-export function findOptimalK(
-	vectors: number[][],
-	algorithm: 'kmeans' | 'kmedoids',
-	distFn: DistanceFn,
-	seed: number,
-): AutoKResult {
+export function findOptimalK(vectors: number[][], algorithm: 'kmeans', distFn: DistanceFn, seed: number): AutoKResult {
 	const n = vectors.length;
 	const [minK, maxK] = computeKRange(n);
 
 	log(`Auto-K: sweeping K=${minK}..${maxK} for ${algorithm} (N=${n})`);
 
-	const clusterFn = algorithm === 'kmeans' ? kmeans : kmedoids;
+	const clusterFn = kmeans;
 
 	// Collect all valid (k, score, assignments) candidates
 	const candidates: { k: number; score: number; assignments: number[] }[] = [];

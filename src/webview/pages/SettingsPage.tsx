@@ -27,7 +27,7 @@ export const SettingsPage: React.FC = () => {
 					• <strong>Embedding Model:</strong> all-MiniLM-L6-v2 (384-dim)
 				</div>
 				<div className="config-card-item">
-					• <strong>Clustering Strategies:</strong> Auto K-Means, Auto K-Medoids, HDBSCAN
+					• <strong>Clustering Strategies:</strong> Auto K-Means, HDBSCAN
 				</div>
 			</div>
 		</div>
