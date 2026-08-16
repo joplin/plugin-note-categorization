@@ -28,6 +28,16 @@ export interface ApplyMessage {
 	clusterTags: { [clusterId: number]: string[] };
 }
 
+export type ApplyUndoPanelMessage =
+	| { type: 'apply_status'; text: string }
+	| { type: 'apply_progress'; current: number; total: number }
+	| { type: 'apply_complete' }
+	| { type: 'apply_error'; message: string }
+	| { type: 'undo_status'; text: string }
+	| { type: 'undo_progress'; current: number; total: number }
+	| { type: 'undo_complete' }
+	| { type: 'undo_error'; message: string };
+
 // Plugin → Webview
 export type PanelMessage =
 	| { type: 'status'; text: string; isNativeAiUsed?: boolean }
@@ -39,17 +49,11 @@ export type PanelMessage =
 			selectedStrategyIndex?: number;
 			isNativeAiUsed?: boolean;
 			isAiNamingUsed?: boolean;
+			panelState?: ApplyUndoPanelMessage;
 			/* eslint-disable-next-line no-mixed-spaces-and-tabs */
 	  }
 	| { type: 'error'; message: string }
-	| { type: 'apply_status'; text: string }
-	| { type: 'apply_progress'; current: number; total: number }
-	| { type: 'apply_complete' }
-	| { type: 'apply_error'; message: string }
-	| { type: 'undo_status'; text: string }
-	| { type: 'undo_progress'; current: number; total: number }
-	| { type: 'undo_complete' }
-	| { type: 'undo_error'; message: string };
+	| ApplyUndoPanelMessage;
 
 // Webview → Plugin
 export type WebviewMessage =

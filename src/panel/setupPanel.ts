@@ -16,6 +16,10 @@ export async function setupPanel(operationState: OperationState): Promise<string
 	await joplin.views.panels.show(panel, false);
 
 	let panelState: PanelMessage | { type: 'idle' } = { type: 'idle' };
+	operationState.setPanelState = (state: PanelMessage) => {
+		panelState = state;
+	};
+
 	let lastResultsState: {
 		strategies: BenchmarkResult[];
 		notes: PanelNote[];
@@ -62,6 +66,16 @@ export async function setupPanel(operationState: OperationState): Promise<string
 					return panelState;
 				}
 				if (lastResultsState) {
+					const isApplyOrUndo =
+						panelState.type === 'apply_status' ||
+						panelState.type === 'apply_progress' ||
+						panelState.type === 'apply_complete' ||
+						panelState.type === 'apply_error' ||
+						panelState.type === 'undo_status' ||
+						panelState.type === 'undo_progress' ||
+						panelState.type === 'undo_complete' ||
+						panelState.type === 'undo_error';
+
 					return {
 						type: 'results',
 						strategies: lastResultsState.strategies,
@@ -69,6 +83,7 @@ export async function setupPanel(operationState: OperationState): Promise<string
 						selectedStrategyIndex: lastResultsState.selectedStrategyIndex,
 						isNativeAiUsed: lastResultsState.isNativeAiUsed,
 						isAiNamingUsed: lastResultsState.isAiNamingUsed,
+						panelState: isApplyOrUndo ? panelState : undefined,
 					};
 				}
 				return panelState;
@@ -78,7 +93,24 @@ export async function setupPanel(operationState: OperationState): Promise<string
 					strategies: msg.strategies,
 					notes: msg.notes,
 					selectedStrategyIndex: msg.selectedStrategyIndex,
+					isNativeAiUsed: lastResultsState?.isNativeAiUsed,
+					isAiNamingUsed: lastResultsState?.isAiNamingUsed,
 				};
+				if (
+					panelState.type === 'apply_complete' ||
+					panelState.type === 'undo_complete' ||
+					panelState.type === 'apply_error' ||
+					panelState.type === 'undo_error'
+				) {
+					panelState = {
+						type: 'results',
+						strategies: msg.strategies,
+						notes: msg.notes,
+						selectedStrategyIndex: msg.selectedStrategyIndex,
+						isNativeAiUsed: lastResultsState?.isNativeAiUsed,
+						isAiNamingUsed: lastResultsState?.isAiNamingUsed,
+					};
+				}
 				return { success: true };
 
 			case 'openNote':

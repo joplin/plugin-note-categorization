@@ -23,6 +23,9 @@ export const DashboardPage: React.FC = () => {
 		applySuccess,
 		applyChanges,
 		isUndoing,
+		undoProgress,
+		undoError,
+		undoSuccess,
 		settings,
 		isNativeAiUsed,
 		isAiNamingUsed,
@@ -206,9 +209,11 @@ export const DashboardPage: React.FC = () => {
 						>
 							{isApplying
 								? 'Applying changes...'
-								: applySuccess
-									? 'Categorization Applied'
-									: 'Apply New Categorization'}
+								: isUndoing
+									? 'Undoing changes...'
+									: applySuccess
+										? 'Categorization Applied'
+										: 'Apply New Categorization'}
 						</button>
 					</div>
 
@@ -226,6 +231,16 @@ export const DashboardPage: React.FC = () => {
 					)}
 
 					{applyError && <div className="status-banner-apply error">Error: {applyError}</div>}
+
+					{isUndoing && (
+						<div className="status-banner-apply info">
+							Reverting changes: {undoProgress.current} / {undoProgress.total} notes processed...
+						</div>
+					)}
+
+					{undoSuccess && <div className="status-banner-apply success">Reverted changes successfully!</div>}
+
+					{undoError && <div className="status-banner-apply error">Undo Error: {undoError}</div>}
 				</div>
 			)}
 		</div>
