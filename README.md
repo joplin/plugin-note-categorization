@@ -1,68 +1,39 @@
 # Joplin Note Categorization Plugin
 
-An on-device AI plugin for Joplin that semantically clusters notes, suggests tags and notebook structures, and detects stale/archivable notes.
+A local-first AI plugin for Joplin that clusters notes semantically, suggests tags and notebook structures.
 
-> [!NOTE]
-> This plugin is under active development as part of GSoC 2026. The embedding pipeline, clustering (K-Means, HDBSCAN), and an interactive UI panel are implemented. Settings customization and staleness analysis are upcoming features.
+## Features
 
----
+- **On-Device Embeddings**: Uses `@huggingface/transformers` (`all-MiniLM-L6-v2`) inside a Web Worker. Automatically utilizes WebGPU (`fp16`) on supported platforms (macOS/Windows) with WebAssembly (`q8`) fallback on Linux. Reuses Joplin's native AI search embeddings when available.
+- **Clustering Algorithms**:
+  - **K-Means**: Automatically determines the optimal number of clusters ($k$) using Silhouette score evaluation.
+  - **HDBSCAN**: Density-based clustering to detect natural topic groupings and isolate outlier/noise notes.
+  - **UMAP**: Reduces vector dimensionality for consistent distance projection.
+- **Topic & Tag Extraction**: Generates cluster titles and tag suggestions using TF-IDF term scoring or generative AI naming.
+- **Interactive Panel**: Side-by-side strategy comparison, drag-and-drop note re-assignment between clusters, cluster renaming, and custom category creation.
+- **Organization Modes**: Move notes into generated sub-notebooks, apply tags, or both.
+- **Undo System**: Full change-tracking log allowing one-click rollback of notebook moves and tag assignments via the panel, Tools menu, or Joplin Settings.
 
-## What the Project is About
+## Demonstration
 
-When note collections grow, manually organizing them into notebooks and tags becomes tedious. This plugin aims to automate organization in a **local-first and privacy-preserving** way by:
-1. **Semantic Embeddings**: Computing dense vector representations of notes on-device.
-2. **Clustering & Classification**: Grouping similar notes together and extracting keywords for automatic tags or notebook structures.
-3. **Staleness Analysis**: Identifying notes that haven't been edited or linked to recently for archiving.
+### Quick Demo
 
----
+https://github.com/user-attachments/assets/1a0513d1-cbc4-4809-8646-fadeb7e7ffd2
 
-## How It Works (Current Pipeline)
+### Full Video Walkthrough
+- **YouTube**: [Watch the full walkthrough](https://www.youtube.com/watch?v=kT5uhHgd-B8)
 
-The plugin implements a background-threaded embedding pipeline:
-* **Token-Based Chunking**: The plugin reads notes using the Joplin Data API and splits long notes into chunks of **200 tokens** using the `js-tiktoken` tokenizer (`cl100k_base` vocabulary).
-* **On-Device Embedding Generation**: A Web Worker uses `@huggingface/transformers` to run the **`Xenova/all-MiniLM-L6-v2`** model. No data ever leaves your machine.
-* **Hybrid Device Execution**:
-  * **Windows & macOS**: Automatically detects WebGPU support (`navigator.gpu`) and executes the model in **`fp16`** precision (at ~43ms per note).
-  * **Linux (Fallback)**: Defaults to running on the CPU using WebAssembly (**`q8`** quantized precision, running ~2x faster than the standard `fp32` CPU baseline).
+## How It Works
 
-## Current Features
+1. **Ingestion & Chunking**: Notes are fetched via the Joplin Data API and split into 200-token chunks with `js-tiktoken` (`cl100k_base`).
+2. **Embedding Generation**: Reuses native Joplin AI Search vectors if available, or generates embeddings locally using `all-MiniLM-L6-v2` via WebGPU (`fp16`) or WASM (`q8`). Chunk vectors are combined using mean pooling.
+3. **Dimensionality Reduction & Clustering**: Embeddings are projected via UMAP, then clustered using K-Means (Silhouette-optimized auto-$k$) or HDBSCAN (density-based with outlier isolation).
+4. **Topic & Tag Extraction**: Cluster names and tags are derived through either generative Joplin AI Naming or offline statistical TF-IDF keyword extraction.
+5. **Execution & Rollback**: Reorganizations are reviewed in the interactive panel and applied directly to Joplin notebooks and tags, with full state logging for one-click undo.
 
-- **Embedding Pipeline**: On-device embedding generation with WebGPU acceleration and WASM fallback
-- **Native AI Integration**: Automatically uses Joplin's built-in AI Search embeddings when available
-- **Multi-Strategy Clustering**: Compare K-Means and HDBSCAN results side-by-side
-- **Interactive Panel**: Drag-and-drop notes between clusters, rename clusters, add custom categories
-- **Apply Categorization**: Organize notes into notebooks and/or tags based on clustering results
-- **Undo Support**: Revert any applied categorization with full change tracking
-- **Empty Notebook Cleanup**: Remove empty notebooks left after reorganization
+## Installation
 
----
-
-## How to Run & Build
-
-### Prerequisites
-* [Node.js](https://nodejs.org/) (v16 or higher)
-* [Joplin](https://joplinapp.org/) (for manual plugin installation)
-
-### Installation
-Clone the repository and install the development dependencies:
-```bash
-npm install
-```
-
-### Building the Plugin
-To compile the source code, pack the Web Worker, and bundle the ONNX runtime WASM assets locally:
-```bash
-npm run dist
-```
-This script does the following:
-1. Compiles TypeScript source files under `src/` via Webpack.
-2. Compiles the Web Worker (`src/worker/embedWorker.ts`) targeting browser-compatible environments.
-3. Runs `tools/copyAssets.js` to copy local `onnxruntime-web` WASM files into `dist/onnx-dist/` so Electron can load them offline without triggering Content Security Policy (CSP) violations.
-4. Packages everything into a `.jpl` archive in the `publish/` directory.
-
-### Testing the Pipeline
 1. Open Joplin.
-2. Go to **Settings -> Plugins -> Manage Plugins -> Install from File** and select the `.jpl` package generated in `publish/`.
-3. Restart Joplin.
-4. Open the categorization panel from **View -> AI Categorise: Toggle Panel** (or click the brain icon on the note toolbar).
-5. Click **Analyse Notes** to run the full pipeline: notes are embedded, clustered, and results are displayed in the panel.
+2. Go to **Tools -> Options -> Plugins** (or **Joplin -> Preferences -> Plugins** on macOS).
+3. Search for **Note Categorization** and click **Install**.
+4. Restart Joplin.
