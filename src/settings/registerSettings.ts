@@ -3,21 +3,32 @@ import { SettingItemType as SettingType } from 'api/types';
 import { log } from '../utils/logger';
 import { undoCategorizationChanges } from '../commands/applyChanges';
 
+import { PanelMessage } from '../types/panel';
+
 export interface OperationState {
 	inProgress: boolean;
+	setPanelState?: (state: PanelMessage) => void;
 }
 
 const OP_IN_PROGRESS_MSG = 'An operation is already in progress. Please wait for it to complete.';
 
+/**
+ * Executes undo operation triggered natively (from Tools menu or Joplin Settings).
+ * Updates backend panelState via operationState.setPanelState so that when the webview
+ * remounts, getInitialState surfaces the undo status/completion banner.
+ * Direct modal user feedback during native options execution is provided via showMessageBox.
+ */
 export async function runNativeUndo(source: string, operationState: OperationState): Promise<void> {
 	if (operationState.inProgress) {
 		await joplin.views.dialogs.showMessageBox(OP_IN_PROGRESS_MSG);
 		return;
 	}
 	operationState.inProgress = true;
+	operationState.setPanelState?.({ type: 'undo_status', text: 'Initializing undo...' });
 	try {
 		let lastMessage = '';
 		await undoCategorizationChanges((state) => {
+			operationState.setPanelState?.(state);
 			log(`Native ${source} Undo: ${'text' in state ? state.text : state.type}`);
 			if (state.type === 'undo_complete') {
 				lastMessage = 'Reverted categorization changes successfully!';
@@ -29,7 +40,9 @@ export async function runNativeUndo(source: string, operationState: OperationSta
 			await joplin.views.dialogs.showMessageBox(lastMessage);
 		}
 	} catch (err) {
-		await joplin.views.dialogs.showMessageBox(`Undo failed: ${err instanceof Error ? err.message : String(err)}`);
+		const errMsg = err instanceof Error ? err.message : String(err);
+		operationState.setPanelState?.({ type: 'undo_error', message: errMsg });
+		await joplin.views.dialogs.showMessageBox(`Undo failed: ${errMsg}`);
 	} finally {
 		operationState.inProgress = false;
 	}

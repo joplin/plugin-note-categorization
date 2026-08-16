@@ -7,7 +7,17 @@ import { EmptyState } from '../components/EmptyState';
 import { NoticeBanner } from '../components/NoticeBanner';
 
 export const EmptyStatePage: React.FC = () => {
-	const { isRunning, runPipeline, statusText, progress, isNativeAiUsed } = useAppState();
+	const {
+		isRunning,
+		runPipeline,
+		statusText,
+		progress,
+		isNativeAiUsed,
+		isUndoing,
+		undoProgress,
+		undoSuccess,
+		undoError,
+	} = useAppState();
 	const [isDismissed, setIsDismissed] = React.useState(false);
 
 	return (
@@ -20,6 +30,21 @@ export const EmptyStatePage: React.FC = () => {
 					message="Using local webview embeddings. Enable Joplin Native AI in Settings for up to 5x faster indexing while keeping data 100% local."
 					onClose={() => setIsDismissed(true)}
 				/>
+			)}
+			{!isRunning && isUndoing && (
+				<div className="status-banner-apply info" style={{ margin: '12px 16px' }}>
+					Reverting changes: {undoProgress.current} / {undoProgress.total} notes processed...
+				</div>
+			)}
+			{!isRunning && undoSuccess && (
+				<div className="status-banner-apply success" style={{ margin: '12px 16px' }}>
+					Reverted changes successfully!
+				</div>
+			)}
+			{!isRunning && undoError && (
+				<div className="status-banner-apply error" style={{ margin: '12px 16px' }}>
+					Undo Error: {undoError}
+				</div>
 			)}
 			{isRunning ? <ProgressBar statusText={statusText} progress={progress} /> : <EmptyState />}
 		</div>

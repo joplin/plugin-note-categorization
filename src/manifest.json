@@ -2,7 +2,7 @@
 	"manifest_version": 1,
 	"id": "com.harsh16gupta.notecategorization",
 	"app_min_version": "3.5",
-	"version": "0.1.8",
+	"version": "0.1.9",
 	"name": "Note Categorization Plugin",
 	"description": "AI-based note categorisation: clusters notes semantically, suggests tags and notebook structures, and detects stale notes.",
 	"author": "Harsh Gupta",

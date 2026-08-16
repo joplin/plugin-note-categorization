@@ -120,109 +120,124 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 	const handlePollResponse = React.useCallback(
 		(msg: PanelMessage | { type: 'idle' }) => {
-			if (!msg || !msg.type) return;
+			const processMessage = (m: PanelMessage | { type: 'idle' }) => {
+				if (!m || !m.type) return;
 
-			switch (msg.type) {
-				case 'status':
-					setStatusText(msg.text || '');
-					if (typeof msg.isNativeAiUsed === 'boolean') {
-						setIsNativeAiUsed(msg.isNativeAiUsed);
-					}
-					break;
+				switch (m.type) {
+					case 'status':
+						setIsRunning(true);
+						setStatusText(m.text || '');
+						if (typeof m.isNativeAiUsed === 'boolean') {
+							setIsNativeAiUsed(m.isNativeAiUsed);
+						}
+						break;
 
-				case 'progress':
-					setProgress({
-						current: msg.current || 0,
-						total: msg.total || 0,
-						cached: msg.cached || 0,
-						skipped: msg.skipped || 0,
-					});
-					if (typeof msg.isNativeAiUsed === 'boolean') {
-						setIsNativeAiUsed(msg.isNativeAiUsed);
-					}
-					break;
+					case 'progress':
+						setIsRunning(true);
+						setProgress({
+							current: m.current || 0,
+							total: m.total || 0,
+							cached: m.cached || 0,
+							skipped: m.skipped || 0,
+						});
+						if (typeof m.isNativeAiUsed === 'boolean') {
+							setIsNativeAiUsed(m.isNativeAiUsed);
+						}
+						break;
 
-				case 'results': {
-					stopPolling();
-					setIsRunning(false);
-					setStrategies(msg.strategies || []);
-					setNotes(msg.notes || []);
-					const kmeansIdx = (msg.strategies || []).findIndex((s: BenchmarkResult) =>
-						s.strategyName.startsWith('kmeans'),
-					);
-					const defaultIdx = kmeansIdx !== -1 ? kmeansIdx : 0;
-					setSelectedStrategyIndex(msg.selectedStrategyIndex ?? defaultIdx);
-					if (typeof msg.isNativeAiUsed === 'boolean') {
-						setIsNativeAiUsed(msg.isNativeAiUsed);
+					case 'results': {
+						stopPolling();
+						setIsRunning(false);
+						setStrategies(m.strategies || []);
+						setNotes(m.notes || []);
+						const kmeansIdx = (m.strategies || []).findIndex((s: BenchmarkResult) =>
+							s.strategyName.startsWith('kmeans'),
+						);
+						const defaultIdx = kmeansIdx !== -1 ? kmeansIdx : 0;
+						setSelectedStrategyIndex(m.selectedStrategyIndex ?? defaultIdx);
+						if (typeof m.isNativeAiUsed === 'boolean') {
+							setIsNativeAiUsed(m.isNativeAiUsed);
+						}
+						if (typeof m.isAiNamingUsed === 'boolean') {
+							setIsAiNamingUsed(m.isAiNamingUsed);
+						}
+						setError(null);
+						setActiveView('dashboard');
+						if (m.panelState) {
+							processMessage(m.panelState);
+						}
+						break;
 					}
-					if (typeof msg.isAiNamingUsed === 'boolean') {
-						setIsAiNamingUsed(msg.isAiNamingUsed);
-					}
-					setError(null);
-					setActiveView('dashboard');
-					break;
+
+					case 'error':
+						stopPolling();
+						setIsRunning(false);
+						setError(m.message || 'An unknown error occurred.');
+						break;
+
+					case 'apply_status':
+						setIsApplying(true);
+						setApplyError(null);
+						setApplySuccess(false);
+						setUndoSuccess(false);
+						setUndoError(null);
+						break;
+
+					case 'apply_progress':
+						setIsApplying(true);
+						setApplyProgress({
+							current: m.current || 0,
+							total: m.total || 0,
+						});
+						break;
+
+					case 'apply_complete':
+						stopPolling();
+						setIsApplying(false);
+						setApplySuccess(true);
+						setUndoSuccess(false);
+						fetchSettings();
+						break;
+
+					case 'apply_error':
+						stopPolling();
+						setIsApplying(false);
+						setApplyError(m.message || 'An unknown error occurred.');
+						break;
+
+					case 'undo_status':
+						setIsUndoing(true);
+						setUndoError(null);
+						setUndoSuccess(false);
+						setApplySuccess(false);
+						setApplyError(null);
+						break;
+
+					case 'undo_progress':
+						setIsUndoing(true);
+						setUndoProgress({
+							current: m.current || 0,
+							total: m.total || 0,
+						});
+						break;
+
+					case 'undo_complete':
+						stopPolling();
+						setIsUndoing(false);
+						setUndoSuccess(true);
+						setApplySuccess(false);
+						fetchSettings();
+						break;
+
+					case 'undo_error':
+						stopPolling();
+						setIsUndoing(false);
+						setUndoError(m.message || 'An unknown error occurred.');
+						break;
 				}
+			};
 
-				case 'error':
-					stopPolling();
-					setIsRunning(false);
-					setError(msg.message || 'An unknown error occurred.');
-					break;
-
-				case 'apply_status':
-					setIsApplying(true);
-					setApplyError(null);
-					setApplySuccess(false);
-					break;
-
-				case 'apply_progress':
-					setIsApplying(true);
-					setApplyProgress({
-						current: msg.current || 0,
-						total: msg.total || 0,
-					});
-					break;
-
-				case 'apply_complete':
-					stopPolling();
-					setIsApplying(false);
-					setApplySuccess(true);
-					fetchSettings();
-					break;
-
-				case 'apply_error':
-					stopPolling();
-					setIsApplying(false);
-					setApplyError(msg.message || 'An unknown error occurred.');
-					break;
-
-				case 'undo_status':
-					setIsUndoing(true);
-					setUndoError(null);
-					setUndoSuccess(false);
-					break;
-
-				case 'undo_progress':
-					setIsUndoing(true);
-					setUndoProgress({
-						current: msg.current || 0,
-						total: msg.total || 0,
-					});
-					break;
-
-				case 'undo_complete':
-					stopPolling();
-					setIsUndoing(false);
-					setUndoSuccess(true);
-					fetchSettings();
-					break;
-
-				case 'undo_error':
-					stopPolling();
-					setIsUndoing(false);
-					setUndoError(msg.message || 'An unknown error occurred.');
-					break;
-			}
+			processMessage(msg);
 		},
 		[
 			stopPolling,
@@ -248,6 +263,11 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 		],
 	);
 
+	const handlePollResponseRef = React.useRef(handlePollResponse);
+	React.useEffect(() => {
+		handlePollResponseRef.current = handlePollResponse;
+	}, [handlePollResponse]);
+
 	const startPolling = React.useCallback(() => {
 		stopPolling();
 		pollIntervalRef.current = setInterval(async () => {
@@ -255,13 +275,13 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 			try {
 				const state = await webviewApi.postMessage({ type: 'poll' });
 				if (state) {
-					handlePollResponse(state);
+					handlePollResponseRef.current(state);
 				}
 			} catch (err) {
 				console.error('Polling error:', err);
 			}
 		}, POLL_INTERVAL_MS);
-	}, [stopPolling, handlePollResponse]);
+	}, [stopPolling]);
 
 	React.useEffect(() => {
 		fetchSettings();
@@ -271,7 +291,18 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 				.then((initialState) => {
 					if (initialState) {
 						handlePollResponse(initialState);
-						if (initialState.type === 'status' || initialState.type === 'progress') {
+						const activeState =
+							initialState.type === 'results' && initialState.panelState
+								? initialState.panelState
+								: initialState;
+						if (
+							activeState.type === 'status' ||
+							activeState.type === 'progress' ||
+							activeState.type === 'apply_status' ||
+							activeState.type === 'apply_progress' ||
+							activeState.type === 'undo_status' ||
+							activeState.type === 'undo_progress'
+						) {
 							startPolling();
 						}
 					}
