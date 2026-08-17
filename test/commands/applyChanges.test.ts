@@ -5,8 +5,16 @@ import {
 	initializeClusterNotebooks,
 	moveNoteToFolder,
 	restoreNotebook,
+	deleteCreatedFolders,
 	cleanUpFolders,
 } from '../../src/commands/applyNotebooks';
+import {
+	fetchExistingTags,
+	initializeClusterTags,
+	applyTagsToNote,
+	removeTagsFromNote,
+	deleteCreatedTags,
+} from '../../src/commands/applyTags';
 
 jest.mock('api', () => ({
 	__esModule: true,
@@ -45,7 +53,7 @@ describe('applyChanges commands', () => {
 		jest.clearAllMocks();
 	});
 
-	it('applyCategorizationChanges runs auto-cleanup after note moves', async () => {
+	it('applyCategorizationChanges runs auto-cleanup after note moves in notebooks mode', async () => {
 		(fetchAllFolders as jest.Mock).mockResolvedValue({
 			byKey: new Map(),
 			byId: new Map([['orig-folder-id', { title: 'Orig Folder', parent_id: 'grandparent-id' }]]),
@@ -69,25 +77,91 @@ describe('applyChanges commands', () => {
 		expect(cleanUpFolders).toHaveBeenCalledTimes(1);
 		const calledSet = (cleanUpFolders as jest.Mock).mock.calls[0][0];
 		expect(calledSet).toEqual(new Set(['orig-folder-id']));
+		expect(initializeClusterTags).not.toHaveBeenCalled();
+		expect(applyTagsToNote).not.toHaveBeenCalled();
 	});
 
-	it('applyCategorizationChanges skips cleanup for tags-only method', async () => {
+	it('applyCategorizationChanges applies tags and skips folder operations in tags mode', async () => {
+		(fetchExistingTags as jest.Mock).mockResolvedValue(new Map());
 		(fetchAllFolders as jest.Mock).mockResolvedValue({
 			byKey: new Map(),
 			byId: new Map(),
 		});
-		(joplin.data.get as jest.Mock).mockResolvedValue({ parent_id: 'orig-folder-id', title: 'Note 1', body: '' });
+		(initializeClusterTags as jest.Mock).mockResolvedValue({ 0: 'tag-1' });
+		(applyTagsToNote as jest.Mock).mockResolvedValue(['tag-1', 'tag-kw']);
+		(joplin.data.get as jest.Mock).mockResolvedValue({
+			parent_id: 'orig-folder-id',
+			title: 'Note 1',
+			body: 'body content',
+		});
 
 		await applyCategorizationChanges(
 			{ method: 'tags', parentNotebookName: '' },
 			[{ noteId: 'note-1', title: 'Note 1' }],
 			[0],
 			{ 0: 'Cluster 1' },
-			{},
+			{ 0: ['tag-kw'] },
 			jest.fn(),
 		);
 
+		expect(initializeClusterTags).toHaveBeenCalledTimes(1);
+		expect(applyTagsToNote).toHaveBeenCalledTimes(1);
+		expect(initializeClusterNotebooks).not.toHaveBeenCalled();
+		expect(moveNoteToFolder).not.toHaveBeenCalled();
 		expect(cleanUpFolders).not.toHaveBeenCalled();
+
+		const setValueCalls = (joplin.settings.setValue as jest.Mock).mock.calls;
+		const changeLogCall = setValueCalls.find((call) => call[0] === 'categorization.changeLog');
+		expect(changeLogCall).toBeDefined();
+
+		const changeLog = JSON.parse(changeLogCall[1]);
+		expect(changeLog.method).toBe('tags');
+		expect(changeLog.notes[0].addedTagIds).toEqual(['tag-1', 'tag-kw']);
+		expect(changeLog.notes[0].originalParentId).toBeUndefined();
+	});
+
+	it('applyCategorizationChanges applies both notebooks and tags in both mode', async () => {
+		(fetchExistingTags as jest.Mock).mockResolvedValue(new Map());
+		(fetchAllFolders as jest.Mock).mockResolvedValue({
+			byKey: new Map(),
+			byId: new Map([['orig-folder-id', { title: 'Orig Folder', parent_id: 'grandparent-id' }]]),
+		});
+		(initializeClusterTags as jest.Mock).mockResolvedValue({ 0: 'tag-1' });
+		(initializeClusterNotebooks as jest.Mock).mockResolvedValue({
+			folderMap: { 0: 'target-folder-id' },
+			uncategorizedFolderId: '',
+		});
+		(applyTagsToNote as jest.Mock).mockResolvedValue(['tag-1']);
+		(joplin.data.get as jest.Mock).mockResolvedValue({
+			parent_id: 'orig-folder-id',
+			title: 'Note 1',
+			body: 'body',
+		});
+		(moveNoteToFolder as jest.Mock).mockResolvedValue({ originalParentId: 'orig-folder-id', modified: true });
+
+		await applyCategorizationChanges(
+			{ method: 'both', parentNotebookName: '' },
+			[{ noteId: 'note-1', title: 'Note 1' }],
+			[0],
+			{ 0: 'Cluster 1' },
+			{ 0: [] },
+			jest.fn(),
+		);
+
+		expect(initializeClusterTags).toHaveBeenCalledTimes(1);
+		expect(initializeClusterNotebooks).toHaveBeenCalledTimes(1);
+		expect(applyTagsToNote).toHaveBeenCalledTimes(1);
+		expect(moveNoteToFolder).toHaveBeenCalledTimes(1);
+		expect(cleanUpFolders).toHaveBeenCalledTimes(1);
+
+		const setValueCalls = (joplin.settings.setValue as jest.Mock).mock.calls;
+		const changeLogCall = setValueCalls.find((call) => call[0] === 'categorization.changeLog');
+		expect(changeLogCall).toBeDefined();
+
+		const changeLog = JSON.parse(changeLogCall[1]);
+		expect(changeLog.method).toBe('both');
+		expect(changeLog.notes[0].addedTagIds).toEqual(['tag-1']);
+		expect(changeLog.notes[0].originalParentId).toBe('orig-folder-id');
 	});
 
 	it('applyCategorizationChanges stores folder metadata in change log', async () => {
@@ -177,5 +251,28 @@ describe('applyChanges commands', () => {
 			expect.any(Map),
 			false,
 		);
+	});
+
+	it('undoCategorizationChanges cleanly removes tags without touching folders for tags-only history', async () => {
+		const mockLog = {
+			timestamp: Date.now(),
+			method: 'tags',
+			notes: [
+				{
+					noteId: 'note-1',
+					addedTagIds: ['created-tag-1', 'created-tag-2'],
+				},
+			],
+			createdFolderIds: [],
+			createdTagIds: ['created-tag-1', 'created-tag-2'],
+		};
+		(joplin.settings.value as jest.Mock).mockResolvedValue(JSON.stringify(mockLog));
+
+		await undoCategorizationChanges(jest.fn());
+
+		expect(removeTagsFromNote).toHaveBeenCalledWith('note-1', ['created-tag-1', 'created-tag-2']);
+		expect(deleteCreatedTags).toHaveBeenCalledWith(['created-tag-1', 'created-tag-2']);
+		expect(restoreNotebook).not.toHaveBeenCalled();
+		expect(deleteCreatedFolders).not.toHaveBeenCalled();
 	});
 });

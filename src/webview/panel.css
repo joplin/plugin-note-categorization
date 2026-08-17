@@ -558,6 +558,43 @@ body {
 	line-height: 1.45;
 }
 
+.apply-method-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.apply-method-label {
+	font-size: 0.82em;
+	font-weight: 600;
+	opacity: 0.7;
+	white-space: nowrap;
+}
+
+.apply-method-select {
+	flex: 1;
+	padding: 5px 8px;
+	border: 1px solid var(--joplin-divider-color);
+	border-radius: 6px;
+	background: var(--joplin-background-color);
+	color: var(--joplin-color);
+	font-size: 0.84em;
+	font-weight: 500;
+	font-family: inherit;
+	cursor: pointer;
+	outline: none;
+	transition: border-color 150ms ease;
+}
+
+.apply-method-select:focus {
+	border-color: color-mix(in srgb, var(--joplin-color) 30%, var(--joplin-divider-color));
+}
+
+.apply-method-select:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
 .apply-action-row {
 	display: flex;
 }
@@ -807,6 +844,7 @@ body {
 .btn-apply-primary:focus-visible,
 .btn-undo:focus-visible,
 .strategy-select:focus-visible,
+.apply-method-select:focus-visible,
 .nav-tab:focus-visible {
 	outline: 2px solid color-mix(in srgb, var(--joplin-color) 40%, transparent);
 	outline-offset: 2px;

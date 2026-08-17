@@ -30,6 +30,7 @@ interface AppStateContextType {
 	settings: {
 		parentNotebook: string;
 		changeLog: string;
+		applyMethod: 'both' | 'tags' | 'notebooks';
 	};
 	updateSetting: (key: string, value: string) => Promise<void>;
 	fetchSettings: () => Promise<void>;

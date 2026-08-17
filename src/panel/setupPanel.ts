@@ -123,6 +123,7 @@ export async function setupPanel(operationState: OperationState): Promise<string
 				return {
 					'categorization.parentNotebook': await joplin.settings.value('categorization.parentNotebook'),
 					'categorization.changeLog': await joplin.settings.value('categorization.changeLog'),
+					'categorization.applyMethod': await joplin.settings.value('categorization.applyMethod'),
 				};
 
 			case 'updateSetting':
