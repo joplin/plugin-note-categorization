@@ -24,6 +24,14 @@ export const SettingsPage: React.FC = () => {
 					• <strong>Target Notebook:</strong> {settings.parentNotebook || '(Root Notebooks)'}
 				</div>
 				<div className="config-card-item">
+					• <strong>Apply Method:</strong>{' '}
+					{settings.applyMethod === 'both'
+						? 'Both (Notebooks & Tags)'
+						: settings.applyMethod === 'notebooks'
+							? 'Notebooks only'
+							: 'Tags only'}
+				</div>
+				<div className="config-card-item">
 					• <strong>Embedding Model:</strong> all-MiniLM-L6-v2 (384-dim)
 				</div>
 				<div className="config-card-item">

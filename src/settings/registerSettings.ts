@@ -65,6 +65,20 @@ export async function registerPluginSettings(operationState: OperationState): Pr
 				description:
 					'Default parent notebook where newly categorized sub-notebooks will be created (leave empty for root).',
 			},
+			'categorization.applyMethod': {
+				value: 'both',
+				type: SettingType.String,
+				section: 'aiCategorization',
+				public: true,
+				isEnum: true,
+				options: {
+					both: 'Both (Notebooks & Tags)',
+					tags: 'Tags only',
+					notebooks: 'Notebooks only',
+				},
+				label: 'Categorization Apply Method',
+				description: 'Choose whether categorization moves notes to notebooks, applies tags, or both.',
+			},
 			'categorization.changeLog': {
 				value: '',
 				type: SettingType.String,

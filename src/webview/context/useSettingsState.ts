@@ -3,12 +3,18 @@ import * as React from 'react';
 interface SettingsResponse {
 	'categorization.parentNotebook': string;
 	'categorization.changeLog': string;
+	'categorization.applyMethod'?: 'both' | 'tags' | 'notebooks';
 }
 
 export function useSettingsState() {
-	const [settings, setSettings] = React.useState({
+	const [settings, setSettings] = React.useState<{
+		parentNotebook: string;
+		changeLog: string;
+		applyMethod: 'both' | 'tags' | 'notebooks';
+	}>({
 		parentNotebook: '',
 		changeLog: '',
+		applyMethod: 'both',
 	});
 
 	const fetchSettings = React.useCallback(async () => {
@@ -20,6 +26,7 @@ export function useSettingsState() {
 				setSettings({
 					parentNotebook: data['categorization.parentNotebook'] || '',
 					changeLog: data['categorization.changeLog'] || '',
+					applyMethod: data['categorization.applyMethod'] || 'both',
 				});
 			}
 		} catch (err) {

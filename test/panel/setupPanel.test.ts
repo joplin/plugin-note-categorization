@@ -309,4 +309,43 @@ describe('setupPanel & getInitialState persistence', () => {
 			isNativeAiUsed: true,
 		});
 	});
+
+	it('returns categorization.applyMethod in getSettings handler', async () => {
+		(joplin.settings.value as jest.Mock).mockImplementation((key: string) => {
+			if (key === 'categorization.parentNotebook') return Promise.resolve('My Parent');
+			if (key === 'categorization.changeLog') return Promise.resolve('{}');
+			if (key === 'categorization.applyMethod') return Promise.resolve('tags');
+			return Promise.resolve('');
+		});
+
+		const settings = await messageHandler({ type: 'getSettings' });
+		expect(settings).toEqual({
+			'categorization.parentNotebook': 'My Parent',
+			'categorization.changeLog': '{}',
+			'categorization.applyMethod': 'tags',
+		});
+	});
+
+	it('passes options.method when handling apply message', async () => {
+		const { applyCategorizationChanges } = jest.requireMock('../../src/commands/applyChanges');
+		(applyCategorizationChanges as jest.Mock).mockResolvedValue(undefined);
+
+		await messageHandler({
+			type: 'apply',
+			options: { method: 'tags', parentNotebookName: '' },
+			notes: [{ noteId: 'note-1', title: 'Note 1' }],
+			assignments: [0],
+			clusterNames: { 0: 'Cluster 1' },
+			clusterTags: { 0: ['tag-1'] },
+		});
+
+		expect(applyCategorizationChanges).toHaveBeenCalledWith(
+			{ method: 'tags', parentNotebookName: '' },
+			[{ noteId: 'note-1', title: 'Note 1' }],
+			[0],
+			{ 0: 'Cluster 1' },
+			{ 0: ['tag-1'] },
+			expect.any(Function),
+		);
+	});
 });

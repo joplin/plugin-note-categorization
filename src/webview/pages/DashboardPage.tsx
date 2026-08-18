@@ -27,6 +27,7 @@ export const DashboardPage: React.FC = () => {
 		undoError,
 		undoSuccess,
 		settings,
+		updateSetting,
 		isNativeAiUsed,
 		isAiNamingUsed,
 	} = useAppState();
@@ -39,6 +40,19 @@ export const DashboardPage: React.FC = () => {
 
 	const [isNativeAiDismissed, setIsNativeAiDismissed] = React.useState(false);
 	const [isAiNamingDismissed, setIsAiNamingDismissed] = React.useState(false);
+
+	const [applyMethod, setApplyMethod] = React.useState<'both' | 'tags' | 'notebooks'>(settings.applyMethod || 'both');
+
+	React.useEffect(() => {
+		if (settings.applyMethod) {
+			setApplyMethod(settings.applyMethod);
+		}
+	}, [settings.applyMethod]);
+
+	const handleApplyMethodChange = (newMethod: 'both' | 'tags' | 'notebooks') => {
+		setApplyMethod(newMethod);
+		updateSetting('categorization.applyMethod', newMethod);
+	};
 
 	const { clusters, noise, sortedClusterIds } = React.useMemo(() => {
 		const clusters: { [key: number]: number[] } = {};
@@ -86,7 +100,7 @@ export const DashboardPage: React.FC = () => {
 			return;
 		}
 		applyChanges({
-			method: 'both',
+			method: applyMethod,
 			parentNotebookName: settings.parentNotebook || '',
 		});
 	};
@@ -197,10 +211,32 @@ export const DashboardPage: React.FC = () => {
 					<div className="apply-header">
 						<div className="apply-title">Apply the new categorization</div>
 						<div className="apply-subtitle">
-							This will automatically move notes into their corresponding notebooks and apply the semantic
-							tags.
+							{applyMethod === 'both' &&
+								'This will automatically move notes into their corresponding notebooks and apply the semantic tags.'}
+							{applyMethod === 'tags' &&
+								'This will apply cluster and keyword tags to notes without moving them or creating notebooks.'}
+							{applyMethod === 'notebooks' &&
+								'This will create notebooks and move notes into them without creating or adding tags.'}
 						</div>
 					</div>
+
+					<div className="apply-method-row">
+						<label htmlFor="apply-method-select" className="apply-method-label">
+							Apply Method:
+						</label>
+						<select
+							id="apply-method-select"
+							className="apply-method-select"
+							value={applyMethod}
+							onChange={(e) => handleApplyMethodChange(e.target.value as 'both' | 'tags' | 'notebooks')}
+							disabled={isApplying || isUndoing || applySuccess}
+						>
+							<option value="both">Both (Notebooks &amp; Tags)</option>
+							<option value="tags">Tags only</option>
+							<option value="notebooks">Notebooks only</option>
+						</select>
+					</div>
+
 					<div className="apply-action-row">
 						<button
 							className="btn-apply-primary"
