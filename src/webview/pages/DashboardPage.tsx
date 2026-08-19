@@ -30,6 +30,9 @@ export const DashboardPage: React.FC = () => {
 		updateSetting,
 		isNativeAiUsed,
 		isAiNamingUsed,
+		filterConfig,
+		folders,
+		setIsFilterModalOpen,
 	} = useAppState();
 
 	const selectedStrategy = strategies[selectedStrategyIndex];
@@ -107,7 +110,13 @@ export const DashboardPage: React.FC = () => {
 
 	return (
 		<div className="page-dashboard">
-			<Header isRunning={isRunning} onRun={runPipeline} />
+			<Header
+				isRunning={isRunning}
+				onRun={() => runPipeline()}
+				filterConfig={filterConfig}
+				folders={folders}
+				onOpenFilterModal={() => setIsFilterModalOpen(true)}
+			/>
 
 			{!isNativeAiUsed && !isNativeAiDismissed && (
 				<NoticeBanner

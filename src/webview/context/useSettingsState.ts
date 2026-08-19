@@ -20,9 +20,9 @@ export function useSettingsState() {
 	const fetchSettings = React.useCallback(async () => {
 		try {
 			if (typeof webviewApi === 'undefined') return;
-			const res = await webviewApi.postMessage({ type: 'getSettings' });
+			const res = await webviewApi.postMessage<SettingsResponse>({ type: 'getSettings' });
 			if (res) {
-				const data = res as unknown as SettingsResponse;
+				const data = res;
 				setSettings({
 					parentNotebook: data['categorization.parentNotebook'] || '',
 					changeLog: data['categorization.changeLog'] || '',

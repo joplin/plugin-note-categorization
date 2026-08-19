@@ -17,12 +17,21 @@ export const EmptyStatePage: React.FC = () => {
 		undoProgress,
 		undoSuccess,
 		undoError,
+		filterConfig,
+		folders,
+		setIsFilterModalOpen,
 	} = useAppState();
 	const [isDismissed, setIsDismissed] = React.useState(false);
 
 	return (
 		<div className="page-empty-state">
-			<Header isRunning={isRunning} onRun={runPipeline} />
+			<Header
+				isRunning={isRunning}
+				onRun={() => runPipeline()}
+				filterConfig={filterConfig}
+				folders={folders}
+				onOpenFilterModal={() => setIsFilterModalOpen(true)}
+			/>
 			{isRunning && !isNativeAiUsed && !isDismissed && (
 				<NoticeBanner
 					variant="info"

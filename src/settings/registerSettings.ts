@@ -95,6 +95,14 @@ export async function registerPluginSettings(operationState: OperationState): Pr
 				label: 'Last Categorization Summary',
 				description: 'Summary of the last applied categorization.',
 			},
+			'categorization.notebookFilter': {
+				value: '',
+				type: SettingType.String,
+				section: 'aiCategorization',
+				public: false,
+				label: 'Notebook Filter Configuration',
+				description: 'Internal configuration for included/excluded notebooks in categorization.',
+			},
 			'categorization.undoAction': {
 				value: false,
 				type: SettingType.Bool,
