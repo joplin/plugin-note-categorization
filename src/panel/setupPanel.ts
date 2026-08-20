@@ -1,7 +1,9 @@
 import joplin from 'api';
 import { runPipeline } from '../pipeline/runPipeline';
+import { fetchAllFoldersList, buildFolderTree } from '../pipeline/noteReader';
 import { PanelMessage, WebviewMessage, PanelNote } from '../types/panel';
 import { BenchmarkResult } from '../types/cluster';
+import { DEFAULT_NOTEBOOK_FILTER, NotebookFilterConfig, isValidFilterConfig } from '../types/notebook';
 import { log } from '../utils/logger';
 import { applyCategorizationChanges, undoCategorizationChanges } from '../commands/applyChanges';
 import { OperationState } from '../settings/registerSettings';
@@ -30,33 +32,51 @@ export async function setupPanel(operationState: OperationState): Promise<string
 
 	await joplin.views.panels.onMessage(panel, async (msg: WebviewMessage) => {
 		switch (msg.type) {
-			case 'run':
+			case 'run': {
 				panelState = { type: 'status', text: 'Starting pipeline...' };
 				log('Panel: starting pipeline');
 
-				runPipeline(installDir, {
-					onStatus: (text, isNativeAiUsed) => {
-						panelState = { type: 'status', text, isNativeAiUsed };
+				let activeFilter = msg.filterConfig;
+				if (!activeFilter) {
+					try {
+						const raw = await joplin.settings.value('categorization.notebookFilter');
+						if (raw) {
+							const parsed = JSON.parse(raw);
+							activeFilter = isValidFilterConfig(parsed) ? parsed : DEFAULT_NOTEBOOK_FILTER;
+						}
+					} catch {
+						activeFilter = DEFAULT_NOTEBOOK_FILTER;
+					}
+				}
+
+				runPipeline(
+					installDir,
+					{
+						onStatus: (text, isNativeAiUsed) => {
+							panelState = { type: 'status', text, isNativeAiUsed };
+						},
+						onProgress: (current, total, cached, skipped, isNativeAiUsed) => {
+							panelState = { type: 'progress', current, total, cached, skipped, isNativeAiUsed };
+						},
+						onComplete: (strategies, notes, isNativeAiUsed, isAiNamingUsed) => {
+							lastResultsState = {
+								strategies,
+								notes,
+								selectedStrategyIndex: 0,
+								isNativeAiUsed,
+								isAiNamingUsed,
+							};
+							panelState = { type: 'results', strategies, notes, isNativeAiUsed, isAiNamingUsed };
+						},
+						onError: (message) => {
+							panelState = { type: 'error', message };
+						},
 					},
-					onProgress: (current, total, cached, skipped, isNativeAiUsed) => {
-						panelState = { type: 'progress', current, total, cached, skipped, isNativeAiUsed };
-					},
-					onComplete: (strategies, notes, isNativeAiUsed, isAiNamingUsed) => {
-						lastResultsState = {
-							strategies,
-							notes,
-							selectedStrategyIndex: 0,
-							isNativeAiUsed,
-							isAiNamingUsed,
-						};
-						panelState = { type: 'results', strategies, notes, isNativeAiUsed, isAiNamingUsed };
-					},
-					onError: (message) => {
-						panelState = { type: 'error', message };
-					},
-				});
+					activeFilter,
+				);
 
 				return panelState;
+			}
 
 			case 'poll':
 				return panelState;
@@ -129,6 +149,58 @@ export async function setupPanel(operationState: OperationState): Promise<string
 			case 'updateSetting':
 				await joplin.settings.setValue(msg.key, msg.value);
 				return { success: true };
+
+			case 'getNotebooks': {
+				try {
+					const folders = await fetchAllFoldersList();
+					const countsMap = new Map<string, number>();
+					try {
+						let page = 1;
+						const MAX_PAGES = 500;
+						while (page <= MAX_PAGES) {
+							const res = await joplin.data.get(['notes'], { fields: ['parent_id'], page, limit: 100 });
+							if (!res || !res.items) break;
+							for (const n of res.items) {
+								if (n && n.parent_id) {
+									countsMap.set(n.parent_id, (countsMap.get(n.parent_id) || 0) + 1);
+								}
+							}
+							if (!res.has_more) break;
+							page++;
+						}
+					} catch (noteCountErr) {
+						log('Warning: could not fetch note counts for notebooks: ' + noteCountErr);
+					}
+					const folderTree = buildFolderTree(folders, countsMap);
+					const counts: { [folderId: string]: number } = {};
+					countsMap.forEach((v, k) => {
+						counts[k] = v;
+					});
+					return { folders, folderTree, counts };
+				} catch (err) {
+					log('Error in getNotebooks: ' + err);
+					return { folders: [], folderTree: [], counts: {} };
+				}
+			}
+
+			case 'getFilterConfig': {
+				const raw = await joplin.settings.value('categorization.notebookFilter');
+				let filterConfig: NotebookFilterConfig = DEFAULT_NOTEBOOK_FILTER;
+				if (raw) {
+					try {
+						const parsed = JSON.parse(raw);
+						filterConfig = isValidFilterConfig(parsed) ? parsed : DEFAULT_NOTEBOOK_FILTER;
+					} catch {
+						filterConfig = DEFAULT_NOTEBOOK_FILTER;
+					}
+				}
+				return { filterConfig };
+			}
+
+			case 'saveFilterConfig': {
+				await joplin.settings.setValue('categorization.notebookFilter', JSON.stringify(msg.filterConfig));
+				return { success: true };
+			}
 
 			case 'apply':
 				if (operationState.inProgress) {

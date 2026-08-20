@@ -1,4 +1,4 @@
-import type { WebviewMessage, PanelMessage } from '../types/panel';
+import type { WebviewMessage } from '../types/panel';
 
 /**
  * Joplin injects this global into panel webviews at runtime.
@@ -6,7 +6,7 @@ import type { WebviewMessage, PanelMessage } from '../types/panel';
  * and returns the handler's response (PanelMessage or undefined).
  */
 interface JoplinWebviewApi {
-	postMessage(message: WebviewMessage): Promise<PanelMessage | { type: 'idle' } | undefined>;
+	postMessage<T = unknown>(message: WebviewMessage): Promise<T>;
 }
 
 declare global {

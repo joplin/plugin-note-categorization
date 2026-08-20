@@ -1,6 +1,7 @@
 import { BenchmarkResult } from './cluster';
+import { NotebookFilterConfig, FolderItem } from './notebook';
 
-export type { BenchmarkResult };
+export type { BenchmarkResult, NotebookFilterConfig, FolderItem };
 
 export interface PanelNote {
 	noteId: string;
@@ -57,12 +58,15 @@ export type PanelMessage =
 
 // Webview → Plugin
 export type WebviewMessage =
-	| { type: 'run' }
+	| { type: 'run'; filterConfig?: NotebookFilterConfig }
 	| { type: 'poll' }
 	| { type: 'getInitialState' }
 	| { type: 'syncState'; strategies: BenchmarkResult[]; notes: PanelNote[]; selectedStrategyIndex: number }
 	| { type: 'openNote'; noteId: string }
 	| { type: 'getSettings' }
 	| { type: 'updateSetting'; key: string; value: string }
+	| { type: 'getNotebooks' }
+	| { type: 'getFilterConfig' }
+	| { type: 'saveFilterConfig'; filterConfig: NotebookFilterConfig }
 	| ApplyMessage
 	| { type: 'undo' };

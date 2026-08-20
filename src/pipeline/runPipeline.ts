@@ -1,7 +1,8 @@
-import { fetchAllNotes } from './noteReader';
+import { fetchAllNotes, fetchAllJoplinNoteIds } from './noteReader';
 import { benchmark } from './clustering/benchmark';
 import { weightedAverageVectorsWithNorm } from './vectorAggregator';
 import { PanelNote } from '../types/panel';
+import { NotebookFilterConfig } from '../types/notebook';
 import { MetricType } from '../types/cluster';
 import { log, logErr } from '../utils/logger';
 import { VectorCache } from './vectorCache';
@@ -34,19 +35,23 @@ interface IndexedVector {
  * This process is decoupled from console logging so the panel (or any other caller)
  * can receive live updates.
  */
-export const runPipeline = async (installDir: string, callbacks: PipelineCallbacks): Promise<void> => {
+export const runPipeline = async (
+	installDir: string,
+	callbacks: PipelineCallbacks,
+	filterConfig?: NotebookFilterConfig,
+): Promise<void> => {
 	try {
 		callbacks.onStatus('Fetching notes...');
-		const notes = await fetchAllNotes();
-		log(`Fetched ${notes.length} notes`);
+		const notes = await fetchAllNotes(filterConfig);
+		log(`Fetched ${notes.length} notes (filterMode: ${filterConfig?.mode || 'all'})`);
 
 		if (notes.length === 0) {
-			callbacks.onError('No notes found. Create some notes and try again.');
+			callbacks.onError('No notes found matching the selected notebook filter.');
 			return;
 		}
 
 		if (notes.length < 3) {
-			callbacks.onError('Too few notes for clustering (need at least 3).');
+			callbacks.onError('Too few notes for clustering in selected notebooks (need at least 3).');
 			return;
 		}
 
@@ -154,14 +159,16 @@ export const runPipeline = async (installDir: string, callbacks: PipelineCallbac
 
 		const cache = await VectorCache.create();
 
-		// Remove notes from cache that are no longer in Joplin
+		// Remove notes from cache that are no longer in Joplin (safe Joplin-wide check)
 		const indexedIds = await cache.getIndexedIds();
-		const joplinNoteIds = new Set(notes.map((n) => n.id));
-		const idsToDelete = indexedIds.filter((id) => !joplinNoteIds.has(id));
+		if (indexedIds.length > 0) {
+			const allJoplinNoteIds = await fetchAllJoplinNoteIds();
+			const idsToDelete = indexedIds.filter((id) => !allJoplinNoteIds.has(id));
 
-		if (idsToDelete.length > 0) {
-			log(`Removing ${idsToDelete.length} obsolete notes from cache`);
-			await cache.deleteItems(idsToDelete);
+			if (idsToDelete.length > 0) {
+				log(`Removing ${idsToDelete.length} obsolete notes from cache`);
+				await cache.deleteItems(idsToDelete);
+			}
 		}
 
 		await cache.beginUpdate();

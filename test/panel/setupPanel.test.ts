@@ -3,6 +3,7 @@ import joplin from 'api';
 import { setupPanel } from '../../src/panel/setupPanel';
 import { OperationState } from '../../src/settings/registerSettings';
 import { WebviewMessage } from '../../src/types/panel';
+import { NotebookFilterConfig, DEFAULT_NOTEBOOK_FILTER } from '../../src/types/notebook';
 
 jest.mock('api', () => ({
 	__esModule: true,
@@ -18,6 +19,9 @@ jest.mock('api', () => ({
 				show: jest.fn().mockResolvedValue(undefined),
 				onMessage: jest.fn(),
 			},
+		},
+		data: {
+			get: jest.fn(),
 		},
 		commands: {
 			execute: jest.fn().mockResolvedValue(undefined),
@@ -347,5 +351,117 @@ describe('setupPanel & getInitialState persistence', () => {
 			{ 0: ['tag-1'] },
 			expect.any(Function),
 		);
+	});
+
+	it('handles getFilterConfig and saveFilterConfig', async () => {
+		const mockFilter: NotebookFilterConfig = {
+			mode: 'include',
+			selectedFolderIds: ['folder-1'],
+			includeSubNotebooks: true,
+		};
+		(joplin.settings.value as jest.Mock).mockResolvedValue(JSON.stringify(mockFilter));
+
+		const res = await messageHandler({ type: 'getFilterConfig' });
+		expect(res.filterConfig).toEqual(mockFilter);
+
+		const updatedFilter: NotebookFilterConfig = {
+			mode: 'exclude',
+			selectedFolderIds: ['folder-2'],
+			includeSubNotebooks: false,
+		};
+		await messageHandler({
+			type: 'saveFilterConfig',
+			filterConfig: updatedFilter,
+		});
+
+		expect(joplin.settings.setValue).toHaveBeenCalledWith(
+			'categorization.notebookFilter',
+			JSON.stringify(updatedFilter),
+		);
+	});
+
+	it('handles getFilterConfig when setting has invalid/corrupted JSON', async () => {
+		// Corrupted string
+		(joplin.settings.value as jest.Mock).mockResolvedValue('not-valid-json{');
+		let res = await messageHandler({ type: 'getFilterConfig' });
+		expect(res.filterConfig).toEqual(DEFAULT_NOTEBOOK_FILTER);
+
+		// Invalid schema shape
+		(joplin.settings.value as jest.Mock).mockResolvedValue(
+			JSON.stringify({ mode: 'invalid_mode', selectedFolderIds: 123 }),
+		);
+		res = await messageHandler({ type: 'getFilterConfig' });
+		expect(res.filterConfig).toEqual(DEFAULT_NOTEBOOK_FILTER);
+	});
+
+	it('passes filterConfig to runPipeline when run message is received', async () => {
+		const { runPipeline } = jest.requireMock('../../src/pipeline/runPipeline');
+		const mockFilter: NotebookFilterConfig = {
+			mode: 'include',
+			selectedFolderIds: ['folder-123'],
+			includeSubNotebooks: true,
+		};
+
+		await messageHandler({
+			type: 'run',
+			filterConfig: mockFilter,
+		});
+
+		expect(runPipeline).toHaveBeenCalledWith('/mock/install/dir', expect.any(Object), mockFilter);
+	});
+
+	it('getNotebooks handler returns folders, folderTree, and counts', async () => {
+		const mockFolders = [
+			{ id: 'f1', title: 'Work', parent_id: '' },
+			{ id: 'f2', title: 'Personal', parent_id: '' },
+			{ id: 'f3', title: 'Sub-Work', parent_id: 'f1' },
+		];
+
+		(joplin.data.get as jest.Mock).mockImplementation((path: string[]) => {
+			if (path[0] === 'folders') {
+				return Promise.resolve({ items: mockFolders, has_more: false });
+			}
+			if (path[0] === 'notes') {
+				return Promise.resolve({
+					items: [{ parent_id: 'f1' }, { parent_id: 'f1' }, { parent_id: 'f2' }],
+					has_more: false,
+				});
+			}
+			return Promise.resolve({ items: [], has_more: false });
+		});
+
+		const result = await messageHandler({ type: 'getNotebooks' });
+		expect(result.folders).toHaveLength(3);
+		expect(result.folderTree).toHaveLength(2); // 2 root folders
+		expect(result.counts['f1']).toBe(2);
+		expect(result.counts['f2']).toBe(1);
+		expect(result.counts['f3']).toBeUndefined();
+	});
+
+	it('run handler falls back to saved notebookFilter setting when msg.filterConfig is undefined', async () => {
+		const { runPipeline } = jest.requireMock('../../src/pipeline/runPipeline');
+		const savedFilter: NotebookFilterConfig = {
+			mode: 'exclude',
+			selectedFolderIds: ['folder-abc'],
+			includeSubNotebooks: false,
+		};
+
+		(joplin.settings.value as jest.Mock).mockResolvedValue(JSON.stringify(savedFilter));
+
+		await messageHandler({ type: 'run' });
+
+		expect(runPipeline).toHaveBeenCalledWith('/mock/install/dir', expect.any(Object), savedFilter);
+	});
+
+	it('run handler falls back to DEFAULT_NOTEBOOK_FILTER when saved setting is corrupt/invalid', async () => {
+		const { runPipeline } = jest.requireMock('../../src/pipeline/runPipeline');
+
+		(joplin.settings.value as jest.Mock).mockResolvedValue('invalid-json{{{');
+		await messageHandler({ type: 'run' });
+		expect(runPipeline).toHaveBeenCalledWith('/mock/install/dir', expect.any(Object), DEFAULT_NOTEBOOK_FILTER);
+
+		(joplin.settings.value as jest.Mock).mockResolvedValue(JSON.stringify({ mode: 'invalid_mode' }));
+		await messageHandler({ type: 'run' });
+		expect(runPipeline).toHaveBeenCalledWith('/mock/install/dir', expect.any(Object), DEFAULT_NOTEBOOK_FILTER);
 	});
 });

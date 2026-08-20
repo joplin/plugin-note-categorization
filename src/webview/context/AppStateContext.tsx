@@ -1,8 +1,10 @@
 import * as React from 'react';
 import { PanelNote, BenchmarkResult, ProgressState, ApplyOptions, PanelMessage } from '../../types/panel';
+import { NotebookFilterConfig, FolderItem } from '../../types/notebook';
 import { useSettingsState } from './useSettingsState';
 import { useApplyState } from './useApplyState';
 import { usePipelineState } from './usePipelineState';
+import { useNotebookFilter } from './useNotebookFilter';
 
 const POLL_INTERVAL_MS = 500;
 
@@ -19,7 +21,7 @@ interface AppStateContextType {
 	activeView: ViewType;
 	isNativeAiUsed: boolean;
 	isAiNamingUsed: boolean;
-	runPipeline: () => void;
+	runPipeline: (filterConfig?: NotebookFilterConfig) => void;
 	changeStrategy: (index: number) => void;
 	setView: (view: ViewType) => void;
 	updateClusterName: (clusterId: number, newName: string) => void;
@@ -34,6 +36,17 @@ interface AppStateContextType {
 	};
 	updateSetting: (key: string, value: string) => Promise<void>;
 	fetchSettings: () => Promise<void>;
+
+	// notebook filter states
+	filterConfig: NotebookFilterConfig;
+	folders: FolderItem[];
+	folderTree: FolderItem[];
+	counts: { [folderId: string]: number };
+	isFilterModalOpen: boolean;
+	isLoadingNotebooks: boolean;
+	setIsFilterModalOpen: (open: boolean) => void;
+	fetchNotebooksAndFilter: () => Promise<void>;
+	saveFilter: (newConfig: NotebookFilterConfig) => Promise<void>;
 
 	// apply states
 	isApplying: boolean;
@@ -65,6 +78,19 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 	// Initialize settings hook
 	const { settings, hasChangeLog, fetchSettings, updateSetting } = useSettingsState();
+
+	// Initialize notebook filter hook
+	const {
+		filterConfig,
+		folders,
+		folderTree,
+		counts,
+		isFilterModalOpen,
+		isLoadingNotebooks,
+		setIsFilterModalOpen,
+		fetchNotebooksAndFilter,
+		saveFilter,
+	} = useNotebookFilter();
 
 	// Initialize apply state hook
 	const {
@@ -118,6 +144,13 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 		setIsNativeAiUsed,
 		setIsAiNamingUsed,
 	} = usePipelineState(() => startPolling(), resetApplyState);
+
+	const handleRunPipeline = React.useCallback(
+		(overrideFilter?: NotebookFilterConfig) => {
+			runPipeline(overrideFilter || filterConfig);
+		},
+		[runPipeline, filterConfig],
+	);
 
 	const handlePollResponse = React.useCallback(
 		(msg: PanelMessage | { type: 'idle' }) => {
@@ -274,7 +307,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 		pollIntervalRef.current = setInterval(async () => {
 			if (typeof webviewApi === 'undefined') return;
 			try {
-				const state = await webviewApi.postMessage({ type: 'poll' });
+				const state = await webviewApi.postMessage<PanelMessage | { type: 'idle' }>({ type: 'poll' });
 				if (state) {
 					handlePollResponseRef.current(state);
 				}
@@ -288,7 +321,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 		fetchSettings();
 		if (typeof webviewApi !== 'undefined') {
 			webviewApi
-				.postMessage({ type: 'getInitialState' })
+				.postMessage<PanelMessage | { type: 'idle' }>({ type: 'getInitialState' })
 				.then((initialState) => {
 					if (initialState) {
 						handlePollResponse(initialState);
@@ -356,7 +389,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 				activeView,
 				isNativeAiUsed,
 				isAiNamingUsed,
-				runPipeline,
+				runPipeline: handleRunPipeline,
 				changeStrategy,
 				setView,
 				updateClusterName,
@@ -365,6 +398,15 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 				settings,
 				updateSetting,
 				fetchSettings,
+				filterConfig,
+				folders,
+				folderTree,
+				counts,
+				isFilterModalOpen,
+				isLoadingNotebooks,
+				setIsFilterModalOpen,
+				fetchNotebooksAndFilter,
+				saveFilter,
 				isApplying,
 				applyProgress,
 				applyError,

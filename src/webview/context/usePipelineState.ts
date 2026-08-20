@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { PanelNote, BenchmarkResult, ProgressState } from '../../types/panel';
+import { NotebookFilterConfig } from '../../types/notebook';
 import { ViewType } from './AppStateContext';
 
 export function usePipelineState(startPolling: () => void, resetApplyState: () => void) {
@@ -19,7 +20,7 @@ export function usePipelineState(startPolling: () => void, resetApplyState: () =
 	const [isNativeAiUsed, setIsNativeAiUsed] = React.useState<boolean>(true);
 	const [isAiNamingUsed, setIsAiNamingUsed] = React.useState<boolean>(true);
 
-	const runPipeline = async () => {
+	const runPipeline = async (filterConfig?: NotebookFilterConfig) => {
 		setIsRunning(true);
 		setStatusText('Starting pipeline...');
 		setProgress({ current: 0, total: 0, cached: 0, skipped: 0 });
@@ -39,7 +40,7 @@ export function usePipelineState(startPolling: () => void, resetApplyState: () =
 				setIsRunning(false);
 				return;
 			}
-			await webviewApi.postMessage({ type: 'run' });
+			await webviewApi.postMessage({ type: 'run', filterConfig });
 		} catch (err) {
 			setError('Failed to start pipeline: ' + String(err));
 			setIsRunning(false);
