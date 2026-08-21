@@ -339,6 +339,40 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 						) {
 							startPolling();
 						}
+					} else {
+						// IPC may have failed under heavy load (e.g., during model loading
+						// or embedding). Start a brief recovery poll to check if a pipeline
+						// is actually running in the background.
+						let recoveryAttempts = 0;
+						const MAX_RECOVERY_ATTEMPTS = 5;
+						const recoveryInterval = setInterval(async () => {
+							recoveryAttempts++;
+							try {
+								const state = await webviewApi.postMessage<PanelMessage | { type: 'idle' }>({
+									type: 'poll',
+								});
+								if (state && state.type !== 'idle') {
+									clearInterval(recoveryInterval);
+									handlePollResponseRef.current(state);
+									if (
+										state.type === 'status' ||
+										state.type === 'progress' ||
+										state.type === 'apply_status' ||
+										state.type === 'apply_progress' ||
+										state.type === 'undo_status' ||
+										state.type === 'undo_progress'
+									) {
+										startPolling();
+									}
+								} else if (recoveryAttempts >= MAX_RECOVERY_ATTEMPTS) {
+									clearInterval(recoveryInterval);
+								}
+							} catch {
+								if (recoveryAttempts >= MAX_RECOVERY_ATTEMPTS) {
+									clearInterval(recoveryInterval);
+								}
+							}
+						}, 1000);
 					}
 				})
 				.catch((err) => {

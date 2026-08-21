@@ -33,6 +33,10 @@ export async function setupPanel(operationState: OperationState): Promise<string
 	await joplin.views.panels.onMessage(panel, async (msg: WebviewMessage) => {
 		switch (msg.type) {
 			case 'run': {
+				if (operationState.inProgress) {
+					return panelState;
+				}
+				operationState.inProgress = true;
 				panelState = { type: 'status', text: 'Starting pipeline...' };
 				log('Panel: starting pipeline');
 
@@ -59,6 +63,7 @@ export async function setupPanel(operationState: OperationState): Promise<string
 							panelState = { type: 'progress', current, total, cached, skipped, isNativeAiUsed };
 						},
 						onComplete: (strategies, notes, isNativeAiUsed, isAiNamingUsed) => {
+							operationState.inProgress = false;
 							lastResultsState = {
 								strategies,
 								notes,
@@ -69,6 +74,7 @@ export async function setupPanel(operationState: OperationState): Promise<string
 							panelState = { type: 'results', strategies, notes, isNativeAiUsed, isAiNamingUsed };
 						},
 						onError: (message) => {
+							operationState.inProgress = false;
 							panelState = { type: 'error', message };
 						},
 					},
@@ -105,6 +111,11 @@ export async function setupPanel(operationState: OperationState): Promise<string
 						isAiNamingUsed: lastResultsState.isAiNamingUsed,
 						panelState: isApplyOrUndo ? panelState : undefined,
 					};
+				}
+				// Safety net: if panelState appears idle but a pipeline is still running,
+				// return a synthetic status so the webview starts polling and recovers.
+				if (operationState.inProgress) {
+					return { type: 'status', text: 'Processing...' };
 				}
 				return panelState;
 
